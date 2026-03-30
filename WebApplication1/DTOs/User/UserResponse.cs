@@ -2,6 +2,6 @@
 
 public class UserResponse
 {
-    private string Name { get; set; }
-    private string Email { get; set; }
+    public string Name { get; set; }
+    public string Email { get; set; }
 }

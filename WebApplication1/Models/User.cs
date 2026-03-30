@@ -1,14 +1,18 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using BCrypt.Net;
 
 namespace WebApplication1.Models;
 
 public class User
 {
     [Required]
-    private string Name { get; set; }
+    public int Id { get; set; }
+    [Required]
+    public string Name { get; set; }
     [Required]
     [EmailAddress]
-    private string Email { get; set; }
+    public string Email { get; set; }
     [MinLength(8)]
-    private string Password { get; set; }
+    public string Password { get; set; }
+    
 }
