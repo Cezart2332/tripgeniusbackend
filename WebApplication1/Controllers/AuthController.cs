@@ -1,5 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using WebApplication1.DTOs.User;
+using WebApplication1.DTOs.Auth;
 using WebApplication1.Services;
 
 namespace WebApplication1.Controllers;
@@ -43,12 +43,13 @@ public class AuthController : ControllerBase
         }
     }
     
-    [HttpPost("refresh")]
-    public async Task<IActionResult> Refresh([FromBody] RefreshRequest refreshRequest)
+    [HttpGet("refresh")]
+    public async Task<IActionResult> Refresh()
     {
+        var refreshToken = Request.Cookies["refreshToken"];
         try
         {
-            return Ok(await _authService.RefreshToken(refreshRequest));
+            return Ok(await _authService.RefreshToken(refreshToken));
         }
         catch (Exception e)
         {

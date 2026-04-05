@@ -20,12 +20,16 @@ public class UserService : IUserService
     {
         var userId = int.Parse(_httpContextAccessor.HttpContext!.User.FindFirstValue(ClaimTypes.NameIdentifier));
 
-        var user = await _context.Users.Include(u => u.Profile).FirstOrDefaultAsync(u => u.Id == userId);
+        var user = await _context.Users.Include(u => u.Profile).Include(u => u.Preferences).FirstOrDefaultAsync(u => u.Id == userId);
 
         return new UserResponse
         {
             Username = user.Profile.Username,
             ProfileUrl = user.Profile.ProfileURL,
+            Description = user.Profile.Description,
+            Tags = user.Preferences.Tags,
+            GroupSize = user.Preferences.MaxGroupSize,
+            
             Email = user.Email
         };
     }
