@@ -21,6 +21,7 @@ public class UserService : IUserService
         var userId = int.Parse(_httpContextAccessor.HttpContext!.User.FindFirstValue(ClaimTypes.NameIdentifier));
 
         var user = await _context.Users.Include(u => u.Profile).Include(u => u.Preferences).FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null) throw new Exception("User not found");
 
         return new UserResponse
         {
