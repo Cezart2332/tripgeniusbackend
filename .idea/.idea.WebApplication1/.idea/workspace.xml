@@ -8,226 +8,42 @@
   <component name="AutoImportSettings">
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
+  <component name="CMakeProjectFlavorService">
+    <option name="flavorId" value="CMakePlainProjectFlavor" />
+  </component>
+  <component name="CMakeSettings">
+    <configurations />
+  </component>
   <component name="ChangeListManager">
     <list default="true" id="043a5161-95e8-4e7e-b2b2-24c4261ca2f9" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/WebApplication1/Controllers/AuthController.cs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/Controllers/UserController.cs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/DTOs/User/AuthRequest.cs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/DTOs/User/AuthResponse.cs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/DTOs/User/LoginRequest.cs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/DTOs/User/RefreshRequest.cs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/DTOs/User/RegisterRequest.cs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/DTOs/User/UserResponse.cs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/Data/AppDbContext.cs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/Migrations/20260330091850_InitialCreate.Designer.cs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/Migrations/20260330091850_InitialCreate.cs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/Migrations/AppDbContextModelSnapshot.cs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/Models/RefreshToken.cs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/Models/User.cs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/Program.cs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/Properties/launchSettings.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/Services/AuthService.cs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/Services/IAuthService.cs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/Services/IUserService.cs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/Services/UserService.cs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/WebApplication1.csproj" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/WebApplication1.http" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/appsettings.Development.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/appsettings.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BCrypt.Net-Next.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BuildHost-net472/Microsoft.Build.Locator.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BuildHost-net472/Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.exe" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BuildHost-net472/Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.exe.config" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BuildHost-net472/Microsoft.IO.Redist.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BuildHost-net472/Newtonsoft.Json.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BuildHost-net472/System.Buffers.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BuildHost-net472/System.Collections.Immutable.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BuildHost-net472/System.CommandLine.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BuildHost-net472/System.Memory.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BuildHost-net472/System.Numerics.Vectors.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BuildHost-net472/System.Runtime.CompilerServices.Unsafe.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BuildHost-net472/System.Threading.Tasks.Extensions.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BuildHost-net472/cs/System.CommandLine.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BuildHost-net472/de/System.CommandLine.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BuildHost-net472/es/System.CommandLine.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BuildHost-net472/fr/System.CommandLine.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BuildHost-net472/it/System.CommandLine.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BuildHost-net472/ja/System.CommandLine.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BuildHost-net472/ko/System.CommandLine.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BuildHost-net472/pl/System.CommandLine.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BuildHost-net472/pt-BR/System.CommandLine.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BuildHost-net472/ru/System.CommandLine.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BuildHost-net472/tr/System.CommandLine.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BuildHost-net472/zh-Hans/System.CommandLine.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BuildHost-net472/zh-Hant/System.CommandLine.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BuildHost-netcore/Microsoft.Build.Locator.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BuildHost-netcore/Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.deps.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BuildHost-netcore/Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BuildHost-netcore/Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.runtimeconfig.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BuildHost-netcore/Newtonsoft.Json.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BuildHost-netcore/System.Collections.Immutable.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BuildHost-netcore/System.CommandLine.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BuildHost-netcore/cs/System.CommandLine.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BuildHost-netcore/de/System.CommandLine.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BuildHost-netcore/es/System.CommandLine.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BuildHost-netcore/fr/System.CommandLine.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BuildHost-netcore/it/System.CommandLine.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BuildHost-netcore/ja/System.CommandLine.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BuildHost-netcore/ko/System.CommandLine.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BuildHost-netcore/pl/System.CommandLine.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BuildHost-netcore/pt-BR/System.CommandLine.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BuildHost-netcore/ru/System.CommandLine.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BuildHost-netcore/tr/System.CommandLine.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BuildHost-netcore/zh-Hans/System.CommandLine.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/BuildHost-netcore/zh-Hant/System.CommandLine.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/Humanizer.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/Microsoft.AspNetCore.Authentication.JwtBearer.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/Microsoft.AspNetCore.Identity.EntityFrameworkCore.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/Microsoft.AspNetCore.OpenApi.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/Microsoft.Build.Framework.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/Microsoft.CodeAnalysis.CSharp.Workspaces.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/Microsoft.CodeAnalysis.CSharp.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/Microsoft.CodeAnalysis.ExternalAccess.RazorCompiler.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/Microsoft.CodeAnalysis.Workspaces.MSBuild.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/Microsoft.CodeAnalysis.Workspaces.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/Microsoft.CodeAnalysis.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/Microsoft.EntityFrameworkCore.Abstractions.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/Microsoft.EntityFrameworkCore.Design.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/Microsoft.EntityFrameworkCore.Relational.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/Microsoft.EntityFrameworkCore.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/Microsoft.Extensions.DependencyModel.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/Microsoft.IdentityModel.Abstractions.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/Microsoft.IdentityModel.JsonWebTokens.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/Microsoft.IdentityModel.Logging.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/Microsoft.IdentityModel.Protocols.OpenIdConnect.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/Microsoft.IdentityModel.Protocols.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/Microsoft.IdentityModel.Tokens.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/Microsoft.OpenApi.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/Microsoft.VisualStudio.SolutionPersistence.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/Mono.TextTemplating.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/Newtonsoft.Json.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/Npgsql.EntityFrameworkCore.PostgreSQL.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/Npgsql.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/Scalar.AspNetCore.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/Swashbuckle.AspNetCore.Swagger.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/Swashbuckle.AspNetCore.SwaggerGen.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/Swashbuckle.AspNetCore.SwaggerUI.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/System.CodeDom.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/System.Composition.AttributedModel.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/System.Composition.Convention.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/System.Composition.Hosting.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/System.Composition.Runtime.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/System.Composition.TypedParts.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/System.IdentityModel.Tokens.Jwt.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/WebApplication1.deps.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/WebApplication1.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/WebApplication1.exe" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/WebApplication1.pdb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/WebApplication1.runtimeconfig.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/WebApplication1.staticwebassets.endpoints.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/appsettings.Development.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/appsettings.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/cs/Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/cs/Microsoft.CodeAnalysis.CSharp.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/cs/Microsoft.CodeAnalysis.Workspaces.MSBuild.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/cs/Microsoft.CodeAnalysis.Workspaces.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/cs/Microsoft.CodeAnalysis.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/de/Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/de/Microsoft.CodeAnalysis.CSharp.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/de/Microsoft.CodeAnalysis.Workspaces.MSBuild.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/de/Microsoft.CodeAnalysis.Workspaces.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/de/Microsoft.CodeAnalysis.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/es/Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/es/Microsoft.CodeAnalysis.CSharp.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/es/Microsoft.CodeAnalysis.Workspaces.MSBuild.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/es/Microsoft.CodeAnalysis.Workspaces.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/es/Microsoft.CodeAnalysis.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/fr/Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/fr/Microsoft.CodeAnalysis.CSharp.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/fr/Microsoft.CodeAnalysis.Workspaces.MSBuild.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/fr/Microsoft.CodeAnalysis.Workspaces.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/fr/Microsoft.CodeAnalysis.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/it/Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/it/Microsoft.CodeAnalysis.CSharp.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/it/Microsoft.CodeAnalysis.Workspaces.MSBuild.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/it/Microsoft.CodeAnalysis.Workspaces.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/it/Microsoft.CodeAnalysis.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/ja/Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/ja/Microsoft.CodeAnalysis.CSharp.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/ja/Microsoft.CodeAnalysis.Workspaces.MSBuild.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/ja/Microsoft.CodeAnalysis.Workspaces.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/ja/Microsoft.CodeAnalysis.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/ko/Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/ko/Microsoft.CodeAnalysis.CSharp.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/ko/Microsoft.CodeAnalysis.Workspaces.MSBuild.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/ko/Microsoft.CodeAnalysis.Workspaces.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/ko/Microsoft.CodeAnalysis.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/pl/Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/pl/Microsoft.CodeAnalysis.CSharp.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/pl/Microsoft.CodeAnalysis.Workspaces.MSBuild.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/pl/Microsoft.CodeAnalysis.Workspaces.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/pl/Microsoft.CodeAnalysis.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/pt-BR/Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/pt-BR/Microsoft.CodeAnalysis.CSharp.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/pt-BR/Microsoft.CodeAnalysis.Workspaces.MSBuild.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/pt-BR/Microsoft.CodeAnalysis.Workspaces.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/pt-BR/Microsoft.CodeAnalysis.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/ru/Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/ru/Microsoft.CodeAnalysis.CSharp.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/ru/Microsoft.CodeAnalysis.Workspaces.MSBuild.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/ru/Microsoft.CodeAnalysis.Workspaces.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/ru/Microsoft.CodeAnalysis.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/tr/Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/tr/Microsoft.CodeAnalysis.CSharp.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/tr/Microsoft.CodeAnalysis.Workspaces.MSBuild.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/tr/Microsoft.CodeAnalysis.Workspaces.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/tr/Microsoft.CodeAnalysis.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/zh-Hans/Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/zh-Hans/Microsoft.CodeAnalysis.CSharp.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/zh-Hans/Microsoft.CodeAnalysis.Workspaces.MSBuild.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/zh-Hans/Microsoft.CodeAnalysis.Workspaces.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/zh-Hans/Microsoft.CodeAnalysis.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/zh-Hant/Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/zh-Hant/Microsoft.CodeAnalysis.CSharp.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/zh-Hant/Microsoft.CodeAnalysis.Workspaces.MSBuild.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/zh-Hant/Microsoft.CodeAnalysis.Workspaces.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/zh-Hant/Microsoft.CodeAnalysis.resources.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/.NETCoreApp,Version=v10.0.AssemblyAttributes.cs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/WebAppli.7D14BD69.Up2Date" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/WebApplication1.AssemblyInfo.cs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/WebApplication1.AssemblyInfoInputs.cache" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/WebApplication1.GeneratedMSBuildEditorConfig.editorconfig" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/WebApplication1.GlobalUsings.g.cs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/WebApplication1.MvcApplicationPartsAssemblyInfo.cache" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/WebApplication1.MvcApplicationPartsAssemblyInfo.cs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/WebApplication1.assets.cache" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/WebApplication1.csproj.AssemblyReference.cache" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/WebApplication1.csproj.CoreCompileInputs.cache" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/WebApplication1.csproj.FileListAbsolute.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/WebApplication1.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/WebApplication1.genruntimeconfig.cache" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/WebApplication1.pdb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/apphost.exe" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/ref/WebApplication1.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/refint/WebApplication1.dll" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/rjsmcshtml.dswa.cache.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/rjsmrazor.dswa.cache.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/rpswa.dswa.cache.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/staticwebassets.build.endpoints.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/staticwebassets.build.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/staticwebassets.build.json.cache" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/staticwebassets.references.upToDateCheck.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/swae.build.ex.cache" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/obj/WebApplication1.csproj.nuget.dgspec.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/obj/WebApplication1.csproj.nuget.g.props" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/obj/WebApplication1.csproj.nuget.g.targets" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/obj/project.assets.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/obj/project.nuget.cache" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/obj/project.packagespec.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/obj/rider.project.model.nuget.info" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WebApplication1/obj/rider.project.restore.info" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/.idea.WebApplication1/.idea/.gitignore" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/.idea.WebApplication1/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.WebApplication1/.idea/vcs.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/WebApplication1/Models/Enums/Actions.cs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/WebApplication1/Models/Enums/Status.cs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/WebApplication1/Models/Message.cs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/WebApplication1/Models/Preferences.cs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/WebApplication1/Models/Profile.cs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/WebApplication1/Models/Trip.cs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/WebApplication1/Models/TripCost.cs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/WebApplication1/Models/TripHistory.cs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/WebApplication1/Models/TripMember.cs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/WebApplication1/Models/TripTimeline.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/.idea.WebApplication1/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.WebApplication1/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/WebApplication1/Controllers/AuthController.cs" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/Controllers/AuthController.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/WebApplication1/DTOs/User/UserResponse.cs" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/DTOs/User/UserResponse.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/WebApplication1/Data/AppDbContext.cs" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/Data/AppDbContext.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/WebApplication1/Models/User.cs" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/Models/User.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/WebApplication1/Program.cs" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/Program.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/WebApplication1/Services/AuthService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/Services/AuthService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/WebApplication1/Services/UserService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/Services/UserService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/WebApplication1.AssemblyInfo.cs" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/WebApplication1.AssemblyInfo.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/WebApplication1.AssemblyInfoInputs.cache" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/WebApplication1.AssemblyInfoInputs.cache" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/WebApplication1.GeneratedMSBuildEditorConfig.editorconfig" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/WebApplication1.GeneratedMSBuildEditorConfig.editorconfig" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/WebApplication1.assets.cache" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/WebApplication1.assets.cache" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/WebApplication1/obj/WebApplication1.csproj.nuget.dgspec.json" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/obj/WebApplication1.csproj.nuget.dgspec.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/WebApplication1/obj/project.assets.json" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/obj/project.assets.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/WebApplication1/obj/project.nuget.cache" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/obj/project.nuget.cache" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/WebApplication1/obj/project.packagespec.json" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/obj/project.packagespec.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/WebApplication1/obj/rider.project.model.nuget.info" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/obj/rider.project.model.nuget.info" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/WebApplication1/obj/rider.project.restore.info" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/obj/rider.project.restore.info" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -238,39 +54,48 @@
     <option name="firstShow" value="false" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="23" />
+    <option name="cachedIndexableFilesCount" value="2" />
     <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/WebApplication1" />
   </component>
   <component name="HighlightingSettingsPerFile">
-    <setting file="file://$APPLICATION_CONFIG_DIR$/resharper-host/SourcesCache/5af9fc9e4e9656f37613efe36625f832168e8333f86d484aaca47099ae6238/Debugger.cs" root0="FORCE_HIGHLIGHTING" />
-    <setting file="file://$APPLICATION_CONFIG_DIR$/resharper-host/SourcesCache/93cfc51838b859ffb0d584bc342f1a2c3f0b2ad7f3197ea24cd81b4b845f0/EntityFrameworkServiceCollectionExtensions.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/WebApplication1/Controllers/UserController.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/WebApplication1/DTOs/User/AuthRequest.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/WebApplication1/DTOs/User/LoginRequest.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/WebApplication1/DTOs/User/RefreshRequest.cs" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/WebApplication1/Models/Enums/Actions.cs" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/WebApplication1/Models/Enums/Status.cs" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/WebApplication1/Models/Message.cs" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/WebApplication1/Models/Preferences.cs" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/WebApplication1/Models/Profile.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/WebApplication1/Models/RefreshToken.cs" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/WebApplication1/Models/Trip.cs" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/WebApplication1/Models/TripCost.cs" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/WebApplication1/Models/TripHistory.cs" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/WebApplication1/Models/TripMember.cs" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/WebApplication1/Models/TripTimeline.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/WebApplication1/Services/IUserService.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/WebApplication1/Services/UserService.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/WebApplication1/obj/project.assets.json" root0="FORCE_HIGHLIGHTING" />
   </component>
-  <component name="KubernetesApiPersistence"><![CDATA[{}]]></component>
-  <component name="KubernetesApiProvider"><![CDATA[{
-  "isMigrated": true
-}]]></component>
+  <component name="KubernetesApiPersistence">{}</component>
+  <component name="KubernetesApiProvider">{
+  &quot;isMigrated&quot;: true
+}</component>
   <component name="McpProjectServerCommands">
     <commands />
     <urls />
   </component>
+  <component name="MetaFilesCheckinStateConfiguration" checkMetaFiles="true" />
   <component name="ProblemsViewState">
     <option name="selectedTabId" value="CurrentFile" />
   </component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "customColor": "",
-  "associatedIndex": 7
-}]]></component>
+  <component name="ProjectColorInfo">{
+  &quot;customColor&quot;: &quot;&quot;,
+  &quot;associatedIndex&quot;: 7
+}</component>
   <component name="ProjectId" id="3BepgEz3F2k8ykJiPBY5TjuKDIL" />
   <component name="ProjectLevelVcsManager">
     <ConfirmationsSetting value="2" id="Add" />
@@ -287,16 +112,22 @@
     "RunOnceActivity.MCP Project settings loaded": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.cidr.known.project.marker": "true",
     "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.readMode.enableVisualFormatting": "true",
     "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "cidr.known.project.marker": "true",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
     "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
-    "git-widget-placeholder": "master",
+    "git-widget-placeholder": "feature-security",
+    "ignore.virus.scanning.warn.message": "true",
     "junie.onboarding.icon.badge.shown": "true",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "preferences.lookFeel",
     "to.speed.mode.migration.done": "true",
     "vue.rearranger.settings.migration": "true"
   }
@@ -346,7 +177,10 @@
       <method v="2" />
     </configuration>
     <configuration default="true" type="docker-deploy" factoryName="dockerfile" temporary="true">
-      <deployment type="dockerfile" />
+      <deployment type="dockerfile">
+        <settings />
+      </deployment>
+      <EXTENSION ID="com.jetbrains.rider.docker.debug" isFastModeEnabled="true" isSslEnabled="false" />
       <method v="2" />
     </configuration>
   </component>
@@ -358,12 +192,15 @@
       <option name="presentableId" value="Default" />
       <updated>1774859503315</updated>
       <workItem from="1774859503624" duration="6682000" />
+      <workItem from="1775376196523" duration="1267000" />
+      <workItem from="1775378148048" duration="4627000" />
     </task>
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
   </component>
+  <component name="UnityCheckinConfiguration" checkUnsavedScenes="true" />
   <component name="UnityProjectConfiguration" hasMinimizedUI="false" />
   <component name="VcsManagerConfiguration">
     <option name="CLEAR_INITIAL_COMMIT_MESSAGE" value="true" />

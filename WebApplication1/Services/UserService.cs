@@ -1,6 +1,7 @@
 ﻿using WebApplication1.Data;
 using WebApplication1.DTOs.User;
 using System.Security.Claims;
+using Microsoft.EntityFrameworkCore;
 
 namespace WebApplication1.Services;
 
@@ -19,11 +20,13 @@ public class UserService : IUserService
     {
         var userId = int.Parse(_httpContextAccessor.HttpContext!.User.FindFirstValue(ClaimTypes.NameIdentifier));
 
-        var user = await _context.Users.FindAsync(userId);
+        var user = await _context.Users.Include(u => u.Profile).FirstOrDefaultAsync(u => u.Id == userId);
 
         return new UserResponse
         {
-            Email = user.Email, Name = user.Name
+            Username = user.Profile.Username,
+            ProfileUrl = user.Profile.ProfileURL,
+            Email = user.Email
         };
     }
 

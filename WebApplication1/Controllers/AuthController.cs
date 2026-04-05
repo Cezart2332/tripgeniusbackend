@@ -18,19 +18,42 @@ public class AuthController : ControllerBase
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterRequest registerRequest)
     {
-        return Ok(await _authService.Register(registerRequest));
+        try
+        {
+            var result = await _authService.Register(registerRequest);
+            return Ok(result);
+        }
+        catch (Exception e)
+        {
+            return Conflict(e.Message);
+        }
     }
     
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest loginRequest)
     {
-        return Ok(await _authService.Login(loginRequest));
+        try
+        {
+            var result = await _authService.Login(loginRequest);
+            return Ok(result);
+        }
+        catch (Exception e)
+        {
+            return Conflict(e.Message);
+        }
     }
     
     [HttpPost("refresh")]
     public async Task<IActionResult> Refresh([FromBody] RefreshRequest refreshRequest)
     {
-        return Ok(await _authService.RefreshToken(refreshRequest));
+        try
+        {
+            return Ok(await _authService.RefreshToken(refreshRequest));
+        }
+        catch (Exception e)
+        {
+            return Conflict(e.Message);
+        }
     }
     
 }

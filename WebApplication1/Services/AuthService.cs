@@ -26,21 +26,40 @@ public class AuthService : IAuthService
     
     public async Task<AuthResponse> Register(RegisterRequest registerRequest)
     {
-        if (_context.Users.Any(u => u.Email == registerRequest.Email)) throw new Exception("Email already exists");
-        User user = new User
+        if (await _context.Users.AnyAsync(u => u.Email == registerRequest.Email)) throw new Exception("Email already exists");
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+
+        try
         {
-            Name = registerRequest.Name,
-            Email = registerRequest.Email,
-            Password = BCrypt.Net.BCrypt.EnhancedHashPassword(registerRequest.Password, 14)
-        };
-        await _context.Users.AddAsync(user);
-        await _context.SaveChangesAsync();
-        return await GenerateTokens(user);
+            Profile profile = new Profile
+            {
+                Username = registerRequest.Name,
+                ProfileURL = "",
+                Description = ""
+            };
+            User user = new User
+            {
+                Profile = profile,
+                Email = registerRequest.Email,
+                Password = BCrypt.Net.BCrypt.EnhancedHashPassword(registerRequest.Password, 14)
+            };
+            await _context.Profiles.AddAsync(profile);
+            await _context.Users.AddAsync(user);
+            await _context.SaveChangesAsync();
+            AuthResponse authResponse = await GenerateTokens(user);
+            await transaction.CommitAsync();
+            return authResponse;
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 
     public async Task<AuthResponse> Login(LoginRequest loginRequest)
     {
-        var user = _context.Users.FirstOrDefault(u => u.Email == loginRequest.Email);
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == loginRequest.Email);
         if (user == null) throw new Exception("User not found");
         if (!BCrypt.Net.BCrypt.EnhancedVerify(loginRequest.Password, user.Password)) throw new Exception("Invalid password");
         return await GenerateTokens(user);
@@ -48,15 +67,28 @@ public class AuthService : IAuthService
 
     public async Task<AuthResponse> RefreshToken(RefreshRequest refreshRequest)
     {
-        var refreshToken = refreshRequest.RefreshToken;
-        if(refreshToken == null) throw new Exception("Refresh token is null");
-        var refreshTokenEntity = _context.RefreshTokens.Include(r => r.User).FirstOrDefault(r => r.Token == refreshToken);
+        if(refreshRequest == null) throw new Exception("Refresh token is null");
+        var refreshToken = HashToken(refreshRequest.RefreshToken);
+        var refreshTokenEntity = await _context.RefreshTokens.Include(r => r.User).FirstOrDefaultAsync(r => r.Token == refreshToken);
         if (refreshTokenEntity == null) throw new Exception("Refresh token not found");
-        if (refreshTokenEntity.Expires < DateTime.UtcNow) throw new Exception("Refresh token expired"); 
+        if (refreshTokenEntity.Expires < DateTime.UtcNow) throw new Exception("Refresh token expired");
+
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+        try
+        {
+            
+            _context.RefreshTokens.Remove(refreshTokenEntity);
+            AuthResponse authResponse = await GenerateTokens(refreshTokenEntity.User);
         
-        _context.RefreshTokens.Remove(refreshTokenEntity);
-        await _context.SaveChangesAsync();
-        return await GenerateTokens(refreshTokenEntity.User);
+            await transaction.CommitAsync();
+            return authResponse;
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+        
     }
     
     public string GenerateAccessToken(User user)
@@ -69,7 +101,6 @@ public class AuthService : IAuthService
         {
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new Claim(ClaimTypes.Email, user.Email),
-            new Claim(ClaimTypes.Name, user.Name)
         };
 
 
@@ -93,10 +124,11 @@ public class AuthService : IAuthService
 
     private async Task<AuthResponse> GenerateTokens(User user)
     {
-        var accesToken = GenerateAccessToken(user);
+        var accessToken = GenerateAccessToken(user);
+        string token = GenerateRefreshToken();
         RefreshToken refreshToken = new RefreshToken
         {
-            Token = GenerateRefreshToken(),
+            Token = HashToken(token),
             User = user,
             Expires = DateTime.UtcNow.AddDays(7)
         };
@@ -105,9 +137,14 @@ public class AuthService : IAuthService
 
         return new AuthResponse
         {
-            Token = accesToken,
-            RefreshToken = refreshToken.Token
+            Token = accessToken,
+            RefreshToken = token
         };
     }
-    
+
+    private string HashToken(string token)
+    {
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(token));
+        return Convert.ToBase64String(bytes);
+    }
 }
