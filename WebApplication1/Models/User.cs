@@ -7,8 +7,10 @@ public class User
 {
     [Required]
     public int Id { get; set; }
-    [Required]
-    public string Name { get; set; }
+    
+    public Profile Profile { get; set; }
+    public Preferences Preferences { get; set; }
+    
     [Required]
     [EmailAddress]
     public string Email { get; set; }
