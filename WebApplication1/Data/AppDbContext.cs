@@ -18,6 +18,13 @@ public class AppDbContext : DbContext
     
     public DbSet<Profile> Profiles { get; set; }
     public DbSet<RefreshToken> RefreshTokens { get; set; }
-    
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<Trip>().Property(t => t.Status).HasConversion<string>();
+        modelBuilder.Entity<TripHistory>().Property(t => t.Action).HasConversion<string>();
+    }
 
 }

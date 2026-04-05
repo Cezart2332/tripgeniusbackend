@@ -26,7 +26,6 @@
       <change afterPath="$PROJECT_DIR$/WebApplication1/Models/TripHistory.cs" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/WebApplication1/Models/TripMember.cs" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/WebApplication1/Models/TripTimeline.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/.idea.WebApplication1/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.WebApplication1/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/WebApplication1/Controllers/AuthController.cs" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/Controllers/AuthController.cs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/WebApplication1/DTOs/User/UserResponse.cs" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/DTOs/User/UserResponse.cs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/WebApplication1/Data/AppDbContext.cs" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/Data/AppDbContext.cs" afterDir="false" />
@@ -193,7 +192,7 @@
       <updated>1774859503315</updated>
       <workItem from="1774859503624" duration="6682000" />
       <workItem from="1775376196523" duration="1267000" />
-      <workItem from="1775378148048" duration="4627000" />
+      <workItem from="1775378148048" duration="4936000" />
     </task>
     <servers />
   </component>
