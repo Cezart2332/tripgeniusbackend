@@ -1,4 +1,4 @@
-﻿namespace WebApplication1.DTOs.User;
+﻿namespace WebApplication1.DTOs.Auth;
 
 public class RefreshRequest
 {

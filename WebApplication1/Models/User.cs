@@ -7,8 +7,9 @@ public class User
 {
     [Required]
     public int Id { get; set; }
-    
+    [Required]
     public Profile Profile { get; set; }
+    [Required]
     public Preferences Preferences { get; set; }
     
     [Required]

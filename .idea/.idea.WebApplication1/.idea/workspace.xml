@@ -17,6 +17,7 @@
   <component name="ChangeListManager">
     <list default="true" id="043a5161-95e8-4e7e-b2b2-24c4261ca2f9" name="Changes" comment="">
       <change afterPath="$PROJECT_DIR$/WebApplication1/Models/Enums/Actions.cs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/WebApplication1/Models/Enums/Roles.cs" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/WebApplication1/Models/Enums/Status.cs" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/WebApplication1/Models/Message.cs" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/WebApplication1/Models/Preferences.cs" afterDir="false" />
@@ -26,17 +27,40 @@
       <change afterPath="$PROJECT_DIR$/WebApplication1/Models/TripHistory.cs" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/WebApplication1/Models/TripMember.cs" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/WebApplication1/Models/TripTimeline.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/.idea.WebApplication1/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.WebApplication1/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/WebApplication1/Controllers/AuthController.cs" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/Controllers/AuthController.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/WebApplication1/DTOs/User/AuthRequest.cs" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/DTOs/Auth/AuthRequest.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/WebApplication1/DTOs/User/AuthResponse.cs" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/DTOs/Auth/AuthResponse.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/WebApplication1/DTOs/User/LoginRequest.cs" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/DTOs/Auth/LoginRequest.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/WebApplication1/DTOs/User/RefreshRequest.cs" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/DTOs/Auth/RefreshRequest.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/WebApplication1/DTOs/User/RegisterRequest.cs" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/DTOs/Auth/RegisterRequest.cs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/WebApplication1/DTOs/User/UserResponse.cs" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/DTOs/User/UserResponse.cs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/WebApplication1/Data/AppDbContext.cs" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/Data/AppDbContext.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/WebApplication1/Migrations/AppDbContextModelSnapshot.cs" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/Migrations/AppDbContextModelSnapshot.cs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/WebApplication1/Models/User.cs" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/Models/User.cs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/WebApplication1/Program.cs" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/Program.cs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/WebApplication1/Services/AuthService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/Services/AuthService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/WebApplication1/Services/IAuthService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/Services/IAuthService.cs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/WebApplication1/Services/UserService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/Services/UserService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/WebApplication1.dll" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/WebApplication1.dll" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/WebApplication1.exe" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/WebApplication1.exe" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/WebApplication1.pdb" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/bin/Debug/net10.0/WebApplication1.pdb" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/WebApplication1.AssemblyInfo.cs" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/WebApplication1.AssemblyInfo.cs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/WebApplication1.AssemblyInfoInputs.cache" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/WebApplication1.AssemblyInfoInputs.cache" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/WebApplication1.GeneratedMSBuildEditorConfig.editorconfig" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/WebApplication1.GeneratedMSBuildEditorConfig.editorconfig" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/WebApplication1.assets.cache" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/WebApplication1.assets.cache" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/WebApplication1.csproj.CoreCompileInputs.cache" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/WebApplication1.csproj.CoreCompileInputs.cache" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/WebApplication1.csproj.FileListAbsolute.txt" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/WebApplication1.csproj.FileListAbsolute.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/WebApplication1.dll" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/WebApplication1.dll" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/WebApplication1.genruntimeconfig.cache" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/WebApplication1.genruntimeconfig.cache" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/WebApplication1.pdb" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/WebApplication1.pdb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/apphost.exe" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/apphost.exe" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/ref/WebApplication1.dll" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/ref/WebApplication1.dll" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/refint/WebApplication1.dll" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/refint/WebApplication1.dll" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/rjsmcshtml.dswa.cache.json" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/rjsmcshtml.dswa.cache.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/rjsmrazor.dswa.cache.json" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/rjsmrazor.dswa.cache.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/rpswa.dswa.cache.json" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/obj/Debug/net10.0/rpswa.dswa.cache.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/WebApplication1/obj/WebApplication1.csproj.nuget.dgspec.json" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/obj/WebApplication1.csproj.nuget.dgspec.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/WebApplication1/obj/project.assets.json" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/obj/project.assets.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/WebApplication1/obj/project.nuget.cache" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication1/obj/project.nuget.cache" afterDir="false" />
@@ -61,10 +85,8 @@
   </component>
   <component name="HighlightingSettingsPerFile">
     <setting file="file://$PROJECT_DIR$/WebApplication1/Controllers/UserController.cs" root0="FORCE_HIGHLIGHTING" />
-    <setting file="file://$PROJECT_DIR$/WebApplication1/DTOs/User/AuthRequest.cs" root0="FORCE_HIGHLIGHTING" />
-    <setting file="file://$PROJECT_DIR$/WebApplication1/DTOs/User/LoginRequest.cs" root0="FORCE_HIGHLIGHTING" />
-    <setting file="file://$PROJECT_DIR$/WebApplication1/DTOs/User/RefreshRequest.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/WebApplication1/Models/Enums/Actions.cs" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/WebApplication1/Models/Enums/Roles.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/WebApplication1/Models/Enums/Status.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/WebApplication1/Models/Message.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/WebApplication1/Models/Preferences.cs" root0="FORCE_HIGHLIGHTING" />
