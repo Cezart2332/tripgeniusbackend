@@ -56,5 +56,10 @@ public class AuthController : ControllerBase
             return Conflict(e.Message);
         }
     }
-    
+    [HttpPost("logout")]
+    public async Task Logout()
+    {
+        var refreshToken = Request.Cookies["refreshToken"];
+        await _authService.Logout(refreshToken);
+    }
 }

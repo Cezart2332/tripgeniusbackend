@@ -61,6 +61,18 @@ builder.Services.AddOpenApi(options =>
     });
 });
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("frontend", policy =>
+    {
+        policy.WithOrigins("http://localhost:5173")
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials(); // necesar pentru cookies
+    });
+});
+
+
 var app = builder.Build();
 
 
@@ -72,6 +84,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseStaticFiles();
+app.UseCors("frontend");
 app.UseAuthentication(); 
 app.UseAuthorization();
 

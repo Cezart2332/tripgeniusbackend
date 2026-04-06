@@ -15,26 +15,27 @@ public class AuthService : IAuthService
     private readonly IConfiguration _config;
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly AppDbContext _context;
-    
-    
-    
-    
+
+
+
+
     public AuthService(AppDbContext context, IConfiguration config, IHttpContextAccessor httpContextAccessor)
     {
         _context = context;
         _config = config;
         _httpContextAccessor = httpContextAccessor;
     }
-    
-    
+
+
     public async Task<AuthResponse> Register(RegisterRequest registerRequest)
     {
-        if (await _context.Users.AnyAsync(u => u.Email == registerRequest.Email)) throw new Exception("Email already exists");
+        if (await _context.Users.AnyAsync(u => u.Email == registerRequest.Email))
+            throw new Exception("Email already exists");
         await using var transaction = await _context.Database.BeginTransactionAsync();
 
         try
         {
-            
+
             Profile profile = new Profile
             {
                 Username = registerRequest.Username,
@@ -70,7 +71,8 @@ public class AuthService : IAuthService
     {
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == loginRequest.Email);
         if (user == null) throw new Exception("User not found");
-        if (!BCrypt.Net.BCrypt.EnhancedVerify(loginRequest.Password, user.Password)) throw new Exception("Invalid password");
+        if (!BCrypt.Net.BCrypt.EnhancedVerify(loginRequest.Password, user.Password))
+            throw new Exception("Invalid password");
         await using var transaction = await _context.Database.BeginTransactionAsync();
         try
         {
@@ -85,21 +87,22 @@ public class AuthService : IAuthService
         }
     }
 
-    public async Task<AuthResponse> RefreshToken(string refreshToken)
+    public async Task<AuthResponse> RefreshToken(string? refreshToken)
     {
-        if(refreshToken == null) throw new Exception("Refresh token is null");
+        if (refreshToken == null) throw new Exception("Refresh token is null");
         var hashedRefreshToken = HashToken(refreshToken);
-        var refreshTokenEntity = await _context.RefreshTokens.Include(r => r.User).FirstOrDefaultAsync(r => r.Token == hashedRefreshToken);
+        var refreshTokenEntity = await _context.RefreshTokens.Include(r => r.User)
+            .FirstOrDefaultAsync(r => r.Token == hashedRefreshToken);
         if (refreshTokenEntity == null) throw new Exception("Refresh token not found");
         if (refreshTokenEntity.Expires < DateTime.UtcNow) throw new Exception("Refresh token expired");
 
         await using var transaction = await _context.Database.BeginTransactionAsync();
         try
         {
-            
+
             _context.RefreshTokens.Remove(refreshTokenEntity);
             AuthResponse authResponse = await GenerateTokens(refreshTokenEntity.User);
-        
+
             await transaction.CommitAsync();
             return authResponse;
         }
@@ -108,10 +111,28 @@ public class AuthService : IAuthService
             await transaction.RollbackAsync();
             throw;
         }
-        
+
     }
-    
-    public string GenerateAccessToken(User user)
+
+    public async Task Logout(string? refreshToken)
+    {
+        if (refreshToken != null)
+        {
+            var hashedRefreshToken = HashToken(refreshToken);
+            var refreshTokenEntity = await _context.RefreshTokens
+                .FirstOrDefaultAsync(r => r.Token == hashedRefreshToken);
+
+            if (refreshTokenEntity != null) 
+            {
+                _context.RefreshTokens.Remove(refreshTokenEntity);
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        _httpContextAccessor.HttpContext!.Response.Cookies.Delete("refreshToken");
+    }
+
+public string GenerateAccessToken(User user)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
