@@ -1,6 +1,7 @@
 ﻿
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using WebApplication1.DTOs.User;
 using WebApplication1.Services;
 
 namespace WebApplication1.Controllers;
@@ -22,4 +23,10 @@ public class UserController : ControllerBase
         return Ok(await _userService.GetMe());
     }
     
+    [Authorize]
+    [HttpPut("update")]
+    public async Task<IActionResult> Update([FromForm] UpdateRequest updateRequest)
+    {
+        return Ok(await _userService.Update(updateRequest));
+    }
 }
