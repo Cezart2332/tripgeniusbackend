@@ -29,33 +29,39 @@ public class AuthService : IAuthService
 
     public async Task<AuthResponse> Register(RegisterRequest registerRequest)
     {
+        Console.WriteLine(registerRequest.MaxGroupSize);
         if (await _context.Users.AnyAsync(u => u.Email == registerRequest.Email))
-            throw new Exception("Email already exists");
+            throw new ArgumentException("Email already exists");
         await using var transaction = await _context.Database.BeginTransactionAsync();
 
         try
         {
 
+
+            User user = new User
+            {
+                Email = registerRequest.Email,
+                Password = BCrypt.Net.BCrypt.EnhancedHashPassword(registerRequest.Password, 14)
+            };
+            await _context.Users.AddAsync(user);
+            await _context.SaveChangesAsync();
             Profile profile = new Profile
             {
+                User = user,
                 Username = registerRequest.Username,
                 ProfileURL = "",
                 Description = ""
             };
             Preferences preferences = new Preferences
             {
+                User = user,
                 MaxGroupSize = registerRequest.MaxGroupSize,
                 Tags = registerRequest.Tags
             };
-            User user = new User
-            {
-                Profile = profile,
-                Preferences = preferences,
-                Email = registerRequest.Email,
-                Password = BCrypt.Net.BCrypt.EnhancedHashPassword(registerRequest.Password, 14)
-            };
-            await _context.Users.AddAsync(user);
+            await _context.Profiles.AddAsync(profile);
+            await _context.Preferences.AddAsync(preferences);
             await _context.SaveChangesAsync();
+            
             AuthResponse authResponse = await GenerateTokens(user);
             await transaction.CommitAsync();
             return authResponse;
@@ -70,9 +76,8 @@ public class AuthService : IAuthService
     public async Task<AuthResponse> Login(LoginRequest loginRequest)
     {
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == loginRequest.Email);
-        if (user == null) throw new Exception("User not found");
-        if (!BCrypt.Net.BCrypt.EnhancedVerify(loginRequest.Password, user.Password))
-            throw new Exception("Invalid password");
+        if (user == null) throw new ArgumentException("User not found");
+        if (!BCrypt.Net.BCrypt.EnhancedVerify(loginRequest.Password, user.Password)) throw new ArgumentException("Invalid password");
         await using var transaction = await _context.Database.BeginTransactionAsync();
         try
         {
@@ -89,12 +94,12 @@ public class AuthService : IAuthService
 
     public async Task<AuthResponse> RefreshToken(string? refreshToken)
     {
-        if (refreshToken == null) throw new Exception("Refresh token is null");
+        if (refreshToken == null) throw new ArgumentException("Refresh token is null");
         var hashedRefreshToken = HashToken(refreshToken);
         var refreshTokenEntity = await _context.RefreshTokens.Include(r => r.User)
             .FirstOrDefaultAsync(r => r.Token == hashedRefreshToken);
-        if (refreshTokenEntity == null) throw new Exception("Refresh token not found");
-        if (refreshTokenEntity.Expires < DateTime.UtcNow) throw new Exception("Refresh token expired");
+        if (refreshTokenEntity == null) throw new ArgumentException("Refresh token not found");
+        if (refreshTokenEntity.Expires < DateTime.UtcNow) throw new ArgumentException("Refresh token expired");
 
         await using var transaction = await _context.Database.BeginTransactionAsync();
         try
@@ -129,7 +134,12 @@ public class AuthService : IAuthService
             }
         }
 
-        _httpContextAccessor.HttpContext!.Response.Cookies.Delete("refreshToken");
+        _httpContextAccessor.HttpContext!.Response.Cookies.Delete("refreshToken", new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.Strict,
+        });
     }
 
 public string GenerateAccessToken(User user)

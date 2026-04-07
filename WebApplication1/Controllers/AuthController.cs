@@ -23,9 +23,9 @@ public class AuthController : ControllerBase
             var result = await _authService.Register(registerRequest);
             return Ok(result);
         }
-        catch (Exception e)
+        catch (ArgumentException e)
         {
-            return Conflict(e.Message);
+            return BadRequest(new { message = e.Message });
         }
     }
     
@@ -37,9 +37,9 @@ public class AuthController : ControllerBase
             var result = await _authService.Login(loginRequest);
             return Ok(result);
         }
-        catch (Exception e)
+        catch (ArgumentException e)
         {
-            return Conflict(e.Message);
+            return BadRequest(new { message = e.Message });
         }
     }
     
@@ -51,9 +51,10 @@ public class AuthController : ControllerBase
         {
             return Ok(await _authService.RefreshToken(refreshToken));
         }
-        catch (Exception e)
+        catch (ArgumentException e)
         {
-            return Conflict(e.Message);
+            Console.WriteLine(e.Message);
+            return BadRequest(new { message = e.Message });
         }
     }
     [HttpPost("logout")]
@@ -62,4 +63,5 @@ public class AuthController : ControllerBase
         var refreshToken = Request.Cookies["refreshToken"];
         await _authService.Logout(refreshToken);
     }
+
 }
