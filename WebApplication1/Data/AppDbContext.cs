@@ -18,6 +18,7 @@ public class AppDbContext : DbContext
     
     public DbSet<Profile> Profiles { get; set; }
     public DbSet<RefreshToken> RefreshTokens { get; set; }
+    public DbSet<Bug> Bugs { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -25,6 +26,8 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<Trip>().Property(t => t.Status).HasConversion<string>();
         modelBuilder.Entity<TripHistory>().Property(t => t.Action).HasConversion<string>();
+        modelBuilder.Entity<TripMember>().Property(t => t.Role).HasConversion<string>();
+        modelBuilder.Entity<Bug>().Property(b => b.Status).HasConversion<string>();
     }
 
 }
