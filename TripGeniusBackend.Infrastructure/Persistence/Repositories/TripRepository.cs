@@ -32,15 +32,5 @@ public class TripRepository : ITripRepository
         await _context.SaveChangesAsync();
     }
 
-    public async Task<Trip?> GetTripById(int id)
-    {
-        var trip = await _context.Trips.Include(t => t.Timelines).Include(t => t.Members).Include(t => t.History).FirstOrDefaultAsync(t => t.Id == id);
-        if(trip == null) return null;
-        return trip;
-    }
 
-    public async Task<List<Trip>> GetTrips()
-    {
-        return await _context.Trips.Where(t => t.Status == Status.Upcoming).ToListAsync();
-    }
 }

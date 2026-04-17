@@ -18,22 +18,16 @@ public class UserRepository : IUserRepository
         bool exists = await _context.Users.AnyAsync(u => u.Email.Equals(email));
         return exists;
     }
-
-    public async Task<User?> GetUserById(int id)
-    {
-        return await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
-    }
-    
-    public async Task<User?> GetUserDetailsById(int id)
-    {
-        return await _context.Users.Include(u => u.Profile).Include(u => u.Preferences).FirstOrDefaultAsync(u => u.Id == id);
-    }
-
     public async Task<User?> GetUserByEmail(string email)
     {
-        User? user = _context.Users.FirstOrDefault(u => u.Email.Equals(email));
+        User? user = _context.Users.Include(u => u.Profile).Include(u => u.Preferences).FirstOrDefault(u => u.Email.Equals(email));
         if(user == null) throw new ArgumentException("User not found");
         return user;
+    }
+    public async Task<User?> GetUserById(int id)
+    {
+        return await _context.Users.Include(u => u.Profile).Include(u => u.Preferences)
+            .FirstOrDefaultAsync(u => u.Id == id);
     }
 
     public Task CreateUser(User user)

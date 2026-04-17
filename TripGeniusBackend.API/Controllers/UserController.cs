@@ -35,7 +35,8 @@ public class UserController : ControllerBase
             AvatarFileName = initialUpdateRequest.Avatar?.FileName, 
             AvatarStream = initialUpdateRequest.Avatar != null ?  initialUpdateRequest.Avatar.OpenReadStream() : null,
             Tags = initialUpdateRequest.Tags,
-            GroupSize = initialUpdateRequest.GroupSize
+            GroupSize = initialUpdateRequest.GroupSize,
+            Buget = initialUpdateRequest.Buget
         };
         return Ok(await _userService.Update(updateRequest));
     }

@@ -1,5 +1,6 @@
 ﻿using TripGeniusBackend.Application.DTOs.User;
 using TripGeniusBackend.Application.Interfaces;
+using TripGeniusBackend.Application.Interfaces.Queries;
 using TripGeniusBackend.Domain.Entities;
 using TripGeniusBackend.Domain.Enums;
 
@@ -9,13 +10,15 @@ public class BugService : IBugService
 {
     private readonly IBugRepository _bugRepository;
     private readonly IUserRepository _userRepository;
+    private readonly IUserQueryService _userQueryService;
     private readonly IJwtService _jwtService;
 
-    public BugService(IBugRepository bugRepository, IJwtService jwtService, IUserRepository userRepository)
+    public BugService(IBugRepository bugRepository, IJwtService jwtService, IUserRepository userRepository, IUserQueryService userQueryService)
     {
         _bugRepository = bugRepository;
         _jwtService = jwtService;
         _userRepository = userRepository;
+        _userQueryService = userQueryService;
     }
 
     public async Task ReportBug(BugRequest bugRequest)

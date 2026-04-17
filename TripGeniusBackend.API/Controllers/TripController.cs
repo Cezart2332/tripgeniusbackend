@@ -46,4 +46,26 @@ public class TripController : ControllerBase
             return BadRequest(new { message = e.Message });
         }
     }
+    [Authorize]
+    [HttpPost("get-trips")]
+    public async Task<IActionResult> GetTrips([FromBody] TripsRequest tripsRequest)
+    {
+        var trips = await _tripService.GetTripsForUser(tripsRequest);
+        return Ok(trips);
+    }
+    [Authorize]
+    [HttpGet("get-trip/{tripId}")]
+    public async Task<IActionResult> GetTrip(int tripId)
+    {
+        var trip = await _tripService.GetTrip(tripId);
+        return Ok(trip);
+    }
+    [Authorize]
+    [HttpGet("get-user-trips")]
+    
+    public async Task<IActionResult> GetUserTrips()
+    {
+        var trips = await _tripService.GetUserTrips();
+        return Ok(trips);
+    }
 }
