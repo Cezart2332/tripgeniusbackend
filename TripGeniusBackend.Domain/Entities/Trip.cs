@@ -12,6 +12,7 @@ public class Trip
     public string ImageUrl { get; private set; } = string.Empty;
     public Status Status { get; private set; }
     public List<String> Tags { get; private set; }
+    
     public int MaxParticipants { get; private set; }
     public double Price { get; private set; }
 

@@ -26,9 +26,5 @@ public class RefreshTokenRepository : IRefreshTokenRepository
     }
     
 
-    public async Task<RefreshToken?> GetRefreshToken(string hashedRefreshToken)
-    {
-        return await _context.RefreshTokens.Include(r => r.User)
-            .FirstOrDefaultAsync(r => r.Token == hashedRefreshToken);
-    }
+
 }

@@ -1,23 +1,28 @@
 ﻿using TripGeniusBackend.Application.Interfaces;
 using TripGeniusBackend.Application.DTOs.Auth;
+using TripGeniusBackend.Application.Interfaces.Queries;
 using TripGeniusBackend.Domain.Entities;
 namespace TripGeniusBackend.Application.UseCases;
 
 public class AuthService : IAuthService
 {
     private readonly IUserRepository _userRepository;
+    private readonly IUserQueryService _userQueryService;
     private readonly IJwtService _jwtService;
     private readonly IPasswordHasher _passwordHasher;
     private readonly ITokenHasher _tokenHasher;
     private readonly IRefreshTokenRepository _refreshTokenRepository;
+    private readonly IRefreshTokenQueryService _refreshTokenQueryService;
 
-    public AuthService(IUserRepository userRepository, IJwtService jwtService, IPasswordHasher passwordHasher, ITokenHasher tokenHasher, IRefreshTokenRepository refreshTokenRepository)
+    public AuthService(IUserRepository userRepository,IUserQueryService userQueryService, IJwtService jwtService, IPasswordHasher passwordHasher, ITokenHasher tokenHasher, IRefreshTokenRepository refreshTokenRepository, IRefreshTokenQueryService refreshTokenQueryService)
     {
         _userRepository = userRepository;
+        _userQueryService = userQueryService;
         _jwtService = jwtService;
         _passwordHasher = passwordHasher;
         _tokenHasher = tokenHasher;
         _refreshTokenRepository = refreshTokenRepository;
+        _refreshTokenQueryService = refreshTokenQueryService;
     }
     public async Task<AuthResponse> Register(RegisterRequest registerRequest)
     {
@@ -50,7 +55,7 @@ public class AuthService : IAuthService
     {
         if (refreshToken == null) throw new ArgumentException("Refresh token is null");
         var hashedRefreshToken = _tokenHasher.HashToken(refreshToken);
-        var refreshTokenEntity =  await _refreshTokenRepository.GetRefreshToken(hashedRefreshToken);
+        var refreshTokenEntity =  await _refreshTokenQueryService.GetRefreshToken(hashedRefreshToken);
         if (refreshTokenEntity == null) throw new ArgumentException("Refresh token not found");
         if (refreshTokenEntity.Expires < DateTime.UtcNow) throw new ArgumentException("Refresh token expired");
         
@@ -67,7 +72,7 @@ public class AuthService : IAuthService
         if (refreshToken != null)
         {
             var hashedRefreshToken = _tokenHasher.HashToken(refreshToken);
-            var refreshTokenEntity = await _refreshTokenRepository.GetRefreshToken(hashedRefreshToken);
+            var refreshTokenEntity = await _refreshTokenQueryService.GetRefreshToken(hashedRefreshToken);
 
             if (refreshTokenEntity != null) 
             {

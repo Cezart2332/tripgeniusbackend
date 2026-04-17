@@ -1,18 +1,21 @@
 ﻿using TripGeniusBackend.Application.Interfaces;
 using TripGeniusBackend.Application.DTOs.User;
+using TripGeniusBackend.Application.Interfaces.Queries;
 
 namespace TripGeniusBackend.Application.UseCases;
 
 public class UserService : IUserService
 {
     private readonly IUserRepository _userRepository;
+    private readonly IUserQueryService _userQueryService;
     private readonly IJwtService _jwtService;
     private readonly IFileUploader _fileUploader;
     private readonly IPasswordHasher _passwordHasher;
 
-    public UserService(IUserRepository userRepository, IJwtService jwtService, IFileUploader fileUploader, IPasswordHasher passwordHasher)
+    public UserService(IUserRepository userRepository, IUserQueryService userQueryService,IJwtService jwtService, IFileUploader fileUploader, IPasswordHasher passwordHasher)
     {
         _userRepository = userRepository;
+        _userQueryService = userQueryService;
         _jwtService = jwtService;
         _fileUploader = fileUploader;
         _passwordHasher = passwordHasher;
@@ -20,26 +23,13 @@ public class UserService : IUserService
     
     public async Task<UserResponse> GetMe()
     {
-        var user = await _userRepository.GetUserDetailsById(_jwtService.GetUserId());
-        if (user == null) throw new Exception("User not found");
-        var profile = user.Profile;
-        var preferences = user.Preferences;
-
-
-        return new UserResponse
-        {
-            Username = profile.Username,
-            Email = user.Email,
-            ProfileUrl = profile.ProfileURL,
-            Description = profile.Description,
-            Tags = preferences.Tags,
-            GroupSize = preferences.MaxGroupSize
-        };
+        var user = await _userQueryService.GetUserDetails(_jwtService.GetUserId());
+        return user;
     }
 
     public async Task<UserResponse> Update(UpdateRequest updateRequest)
     {
-        var user = await _userRepository.GetUserDetailsById(_jwtService.GetUserId());
+        var user = await _userRepository.GetUserById(_jwtService.GetUserId());
         if (user == null) throw new Exception("User not found");
         string url = null;
         if (updateRequest.AvatarStream != null)
@@ -69,7 +59,7 @@ public class UserService : IUserService
         var newEmail = changeEmailRequest.NewEmail;
         
         if(await _userRepository.UserExists(newEmail)) throw new ArgumentException("Email already exists");
-        var user = await _userRepository.GetUserDetailsById(_jwtService.GetUserId());
+        var user = await _userRepository.GetUserById(_jwtService.GetUserId());
         if(user == null) throw new Exception("User not found");
         user.UpdateEmail(newEmail);
         await _userRepository.SaveChanges();
@@ -80,7 +70,7 @@ public class UserService : IUserService
         var oldPassword = changePasswordRequest.OldPassword; 
         var newPassword = changePasswordRequest.NewPassword;
         if(newPassword.Length < 8) throw new ArgumentException("Password must be at least 8 characters long");
-        var user = await _userRepository.GetUserDetailsById(_jwtService.GetUserId());
+        var user = await _userRepository.GetUserById(_jwtService.GetUserId());
         if(user == null) throw new Exception("User not found");
         if(!_passwordHasher.VerifyPassword(oldPassword,user.Password)) throw new ArgumentException("Invalid password");
         user.UpdatePassword(_passwordHasher.HashPassword(newPassword));
@@ -89,7 +79,7 @@ public class UserService : IUserService
 
     public async Task DeleteAccount()
     {
-        var user = await _userRepository.GetUserDetailsById(_jwtService.GetUserId());
+        var user = await _userRepository.GetUserById(_jwtService.GetUserId());
         if(user == null) throw new Exception("User not found");
         _fileUploader.DeleteFolder("avatar",user.Id);
         await _userRepository.DeleteUser(user);

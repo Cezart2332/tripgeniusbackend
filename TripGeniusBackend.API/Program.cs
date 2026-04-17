@@ -13,6 +13,8 @@ using TripGeniusBackend.Infrastructure.Persistence;
 using TripGeniusBackend.Infrastructure.Persistence.Repositories;
 using TripGeniusBackend.Infrastructure.Persistence.Services;
 using Scalar.AspNetCore;
+using TripGeniusBackend.Application.Interfaces.Queries;
+using TripGeniusBackend.Infrastructure.Persistence.Queries;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -35,6 +37,10 @@ builder.Services.AddScoped<IUserRepository,UserRepository>();
 builder.Services.AddScoped<IBugRepository,BugRepository>();
 builder.Services.AddScoped<ITripRepository,TripRepository>();
 builder.Services.AddScoped<IRefreshTokenRepository,RefreshTokenRepository>();
+builder.Services.AddScoped<IUserQueryService, UserQueryService>();
+builder.Services.AddScoped<ITripQueryService, TripQueryService>();
+builder.Services.AddScoped<IBugQueryService, BugQueryService>();
+builder.Services.AddScoped<IRefreshTokenQueryService, RefreshTokenQueryService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<ITokenHasher, TokenHasher>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
