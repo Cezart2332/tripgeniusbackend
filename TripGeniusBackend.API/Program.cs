@@ -23,10 +23,14 @@ using TripGeniusBackend.API.Middleware;
 using TripGeniusBackend.Application.Settings;
 using TripGeniusBackend.Infrastructure.Persistence.Hubs;
 
+DotNetEnv.Env.Load();
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-
+builder.Configuration
+    .AddJsonFile("appsettings.json")
+    .AddEnvironmentVariables();
 
 builder.Services.AddSignalR();
 builder.Services.AddControllers();
@@ -141,7 +145,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("frontend", policy =>
     {
-        policy.WithOrigins("http://localhost:5173","http://localhost:4173")
+        policy.WithOrigins("https://tripgenius.online","http://localhost:4173")
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();
