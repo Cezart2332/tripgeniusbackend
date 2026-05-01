@@ -1,0 +1,21 @@
+﻿version: "3.9"
+
+services:
+  db:
+    image: pgvector/pgvector:pg15
+    container_name: tripgenius-db
+    restart: always
+
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: example
+      POSTGRES_DB: tripgenius
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - tripgenius_pgdata:/var/lib/postgresql/data
+
+volumes:
+  tripgenius_pgdata:

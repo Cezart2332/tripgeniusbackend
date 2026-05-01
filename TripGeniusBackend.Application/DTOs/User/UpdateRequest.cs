@@ -10,5 +10,4 @@ public class UpdateRequest
     public string? Description { get; set; }
     public List<string>? Tags { get; set; }
     public int? GroupSize { get; set; }
-    public double? Buget { get; set; }
 }

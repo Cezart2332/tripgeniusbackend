@@ -20,13 +20,24 @@ public class UserRepository : IUserRepository
     }
     public async Task<User?> GetUserByEmail(string email)
     {
-        User? user = _context.Users.Include(u => u.Profile).Include(u => u.Preferences).FirstOrDefault(u => u.Email.Equals(email));
-        if(user == null) throw new ArgumentException("User not found");
+        User? user = await _context.Users.Include(u => u.Profile).Include(u => u.Preferences).Include(u => u.Notifications).FirstOrDefaultAsync(u => u.Email.Equals(email));
+        return user;
+    }
+
+    public async Task<User?> GetUserByToken(string token)
+    {
+        User? user = await _context.Users.Include(u => u.Profile).Include(u => u.Preferences).Include(u => u.Notifications).FirstOrDefaultAsync(u => u.VerifyToken.Equals(token));
+        return user;
+    }
+
+    public async Task<User?> GetUserByResetToken(string token)
+    {
+        User? user = await _context.Users.Include(u => u.Profile).Include(u => u.Preferences).Include(u => u.Notifications).FirstOrDefaultAsync(u => u.ResetToken.Equals(token));
         return user;
     }
     public async Task<User?> GetUserById(int id)
     {
-        return await _context.Users.Include(u => u.Profile).Include(u => u.Preferences)
+        return await _context.Users.Include(u => u.Profile).Include(u => u.Preferences).Include(u => u.Notifications)
             .FirstOrDefaultAsync(u => u.Id == id);
     }
 

@@ -12,6 +12,22 @@ public class TripTimeline
     public string Note {get;private set;}
     
     protected TripTimeline(){}
+
+    public void UpdateDay(int day)
+    {
+        Day = day;
+    }
+
+    public void Update(int day, string startingPoint, double[] fromCoords, string endPoint, double[] toCoords,
+        string note)
+    {
+        Day = day;
+        StartingPoint = startingPoint;
+        FromCoords = fromCoords;
+        EndPoint = endPoint;
+        ToCoords = toCoords;
+        Note = note;
+    }
     
     public TripTimeline(int day, string startingPoint, double[] fromCoords, string endPoint, double[] toCoords, string note)
     {

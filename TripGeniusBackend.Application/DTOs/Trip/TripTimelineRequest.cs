@@ -2,7 +2,6 @@
 
 public class TripTimelineRequest
 {
-    public int Id { get; set; }
     public int Day { get; set; }
     public string StartingPoint { get; set; } = string.Empty;
     public string EndPoint { get; set; } = string.Empty;

@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,37 +15,71 @@ using TripGeniusBackend.Infrastructure.Persistence.Repositories;
 using TripGeniusBackend.Infrastructure.Persistence.Services;
 using Scalar.AspNetCore;
 using TripGeniusBackend.Application.Interfaces.Queries;
+using TripGeniusBackend.Application.Interfaces.Repositories;
+using TripGeniusBackend.Application.Interfaces.UseCases;
 using TripGeniusBackend.Infrastructure.Persistence.Queries;
+using Resend;
+using TripGeniusBackend.API.Middleware;
+using TripGeniusBackend.Application.Settings;
+using TripGeniusBackend.Infrastructure.Persistence.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
 
-
+builder.Services.AddSignalR();
 builder.Services.AddControllers();
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        o => o.UseVector()
+        ));
     
 builder.Services.AddHttpContextAccessor();
+
+builder.Services.Configure<GoogleSettings>(
+    builder.Configuration.GetSection("Google")
+);
+builder.Services.Configure<OpenRouterSettings>(
+    builder.Configuration.GetSection("OpenRouter")
+);
 //Application
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ITripService, TripService>();
 builder.Services.AddScoped<IBugService, BugService>();
+builder.Services.AddScoped<IAiChatService, AiChatService>();
+builder.Services.AddHttpClient<ResendClient>();
+builder.Services.AddHttpClient<IAiService, AiService>();
+builder.Services.AddHttpClient<IEmbeddingService, EmbeddingService>();
+builder.Services.Configure<ResendClientOptions>( o =>
+{
+    o.ApiToken = builder.Configuration["Email:ResendApiKey"]!;
+} );
+builder.Services.AddTransient<IResend, ResendClient>();
 //Infrastructure
 builder.Services.AddScoped<IUserRepository,UserRepository>();
+
+builder.Services.AddScoped<IAiMemoryRepository, AiMemoryRepository>();
+builder.Services.AddScoped<IAiChatRepository,AiChatRepository>();
 builder.Services.AddScoped<IBugRepository,BugRepository>();
 builder.Services.AddScoped<ITripRepository,TripRepository>();
 builder.Services.AddScoped<IRefreshTokenRepository,RefreshTokenRepository>();
+builder.Services.AddScoped<IMessageRepository, MessageRepository>();
 builder.Services.AddScoped<IUserQueryService, UserQueryService>();
 builder.Services.AddScoped<ITripQueryService, TripQueryService>();
+builder.Services.AddScoped<IAiChatQueryService, AiChatQueryService>();
 builder.Services.AddScoped<IBugQueryService, BugQueryService>();
+builder.Services.AddScoped<IMessageQueryService, MessageQueryService>();
 builder.Services.AddScoped<IRefreshTokenQueryService, RefreshTokenQueryService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<ITokenHasher, TokenHasher>();
+builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IFileUploader, FileUploader>();
+builder.Services.AddSingleton<IUserIdProvider, UserIdProvider>();
+
 builder.Services.AddAuthentication(options => 
         {
             options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme; 
@@ -61,7 +96,24 @@ builder.Services.AddAuthentication(options =>
             ValidateIssuerSigningKey = true,
             ValidIssuer = builder.Configuration["Jwt:Issuer"],
             ValidAudience = builder.Configuration["Jwt:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
+            IssuerSigningKey = new SymmetricSecurityKey(
+                System.Text.Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
+        };
+        
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+
+                var path = context.HttpContext.Request.Path;
+
+
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                    context.Token = accessToken;
+
+                return Task.CompletedTask;
+            }
         };
     });
 
@@ -89,10 +141,10 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("frontend", policy =>
     {
-        policy.WithOrigins("http://localhost:5173")
+        policy.WithOrigins("http://localhost:5173","http://localhost:4173")
             .AllowAnyHeader()
             .AllowAnyMethod()
-            .AllowCredentials(); // necesar pentru cookies
+            .AllowCredentials();
     });
 });
 
@@ -108,17 +160,30 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+var uploadsPath = Environment.GetEnvironmentVariable("UPLOADS_PATH") 
+    ?? Path.Combine(builder.Environment.ContentRootPath, "wwwroot");
+
+// Creează folderul dacă nu există
+Directory.CreateDirectory(uploadsPath);
+
 app.UseStaticFiles(new StaticFileOptions
 {
-    FileProvider = new PhysicalFileProvider(
-        Path.Combine(builder.Environment.ContentRootPath, "wwwroot")),
+    FileProvider = new PhysicalFileProvider(uploadsPath),
     RequestPath = ""
 });
+app.UseMiddleware<ExceptionMiddleware>(); 
+app.UseMiddleware<LoggingMiddleware>();
 app.UseCors("frontend");
 app.UseAuthentication(); 
 app.UseAuthorization();
 
 
 app.MapControllers();
+app.MapHub<TripChatHub>("/hubs/trip-chat");
+app.MapHub<AiChatHub>("/hubs/ai-chat");
 
+using var scope = app.Services.CreateScope();
+var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+db.Database.Migrate();
+await db.SaveChangesAsync();
 app.Run();

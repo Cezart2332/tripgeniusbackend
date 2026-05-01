@@ -71,16 +71,18 @@ public class JwtService : IJwtService
     
     public async Task<AuthResponse> GenerateTokens(User user)
     {
+        await _refreshTokenRepository.DeleteAllRefreshTokens(user.Id);
         var accessToken = GenerateAccessToken(user);
         string token = GenerateRefreshToken();
         RefreshToken refreshToken = new RefreshToken
         {
             Token = _tokenHasher.HashToken(token),
-            User = user,
+            UserId = user.Id,
             Expires = DateTime.UtcNow.AddDays(7)
         };
         SetCookie(token);
         await _refreshTokenRepository.AddRefreshToken(refreshToken);
+        await _refreshTokenRepository.SaveChanges();
         
         return new AuthResponse
         {
