@@ -16,6 +16,4 @@ public class RegisterRequest
     public List<String> Tags { get; set; }
     [Required]
     public int MaxGroupSize { get; set; }
-    [Required]
-    public double Buget { get; set; }
 }

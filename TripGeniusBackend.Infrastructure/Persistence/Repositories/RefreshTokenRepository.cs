@@ -12,16 +12,27 @@ public class RefreshTokenRepository : IRefreshTokenRepository
     {
         _context = context;
     }
+
+    public async Task DeleteAllRefreshTokens(int userId)
+    {
+        await _context.RefreshTokens.Where(t => t.UserId == userId).ExecuteDeleteAsync();
+    }
     
     public async Task AddRefreshToken(RefreshToken refreshToken)
     {
         await _context.RefreshTokens.AddAsync(refreshToken);
-        await _context.SaveChangesAsync();
     }
 
     public async Task DeleteRefreshToken(RefreshToken refreshToken)
     {
-        _context.RefreshTokens.Remove(refreshToken);
+
+        await _context.RefreshTokens
+            .Where(t => t.Id == refreshToken.Id)
+            .ExecuteDeleteAsync();
+    }
+
+    public async Task SaveChanges()
+    {
         await _context.SaveChangesAsync();
     }
     

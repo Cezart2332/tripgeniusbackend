@@ -15,7 +15,7 @@ public class TripResponse
     public int CurrentMembers { get; set; }
     public int MaxParticipants { get; set; }
     public List<string> Tags { get; set; }
-    public List<TripTimelineRequest?> Timelines { get; set; }
+    public List<TripTimelineResponse?> Timelines { get; set; }
     public List<TripMemberResponse?> Members { get; set; }
-    public bool isUserMember { get; set; }
+    public bool IsUserMember { get; set; }
 }

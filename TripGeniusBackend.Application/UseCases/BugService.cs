@@ -1,6 +1,7 @@
 ﻿using TripGeniusBackend.Application.DTOs.User;
 using TripGeniusBackend.Application.Interfaces;
 using TripGeniusBackend.Application.Interfaces.Queries;
+using TripGeniusBackend.Application.Interfaces.UseCases;
 using TripGeniusBackend.Domain.Entities;
 using TripGeniusBackend.Domain.Enums;
 
@@ -24,7 +25,7 @@ public class BugService : IBugService
     public async Task ReportBug(BugRequest bugRequest)
     {
         var user = await _userRepository.GetUserById(_jwtService.GetUserId());
-        if(user == null) throw new Exception("User not found");
+        if(user == null) throw new KeyNotFoundException("User not found");
         Bug bug = new Bug
         {
             Description = bugRequest.Description,

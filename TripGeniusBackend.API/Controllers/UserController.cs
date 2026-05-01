@@ -1,8 +1,10 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TripGeniusBackend.API.DTOs;
+using TripGeniusBackend.Application.DTOs.Notifications;
 using TripGeniusBackend.Application.DTOs.User;
 using TripGeniusBackend.Application.Interfaces;
+using TripGeniusBackend.Application.Interfaces.UseCases;
 
 namespace TripGeniusBackend.API.Controllers;
 
@@ -36,7 +38,6 @@ public class UserController : ControllerBase
             AvatarStream = initialUpdateRequest.Avatar != null ?  initialUpdateRequest.Avatar.OpenReadStream() : null,
             Tags = initialUpdateRequest.Tags,
             GroupSize = initialUpdateRequest.GroupSize,
-            Buget = initialUpdateRequest.Buget
         };
         return Ok(await _userService.Update(updateRequest));
     }
@@ -81,7 +82,26 @@ public class UserController : ControllerBase
         await _userService.DeleteAccount();
         return Ok();
     }
+    [Authorize]
+    [HttpPost("search-users")]
+    public async Task<IActionResult> SearchUsers([FromBody] UsersRequest usersRequest)
+    {
+        var users = await _userService.SearchUsersByEmail(usersRequest);
+        return Ok(users);
+    }
+    [Authorize]
+    [HttpPost("read-notifications")]
+    public async Task<IActionResult> ReadNotifications()
+    {
+        await _userService.ReadNotifications();
+        return Ok();
+    }
 
-
-
+    [Authorize]
+    [HttpPost("read-notification")]
+    public async Task<IActionResult> ReadNotification(NotificationRequest notificationRequest)
+    {
+        await _userService.MarkNotificationAsRead(notificationRequest.NotificationId);
+        return Ok();
+    }
 }

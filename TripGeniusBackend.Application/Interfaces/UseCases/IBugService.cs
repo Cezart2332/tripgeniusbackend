@@ -1,6 +1,6 @@
 ﻿using TripGeniusBackend.Application.DTOs.User;
 
-namespace TripGeniusBackend.Application.Interfaces;
+namespace TripGeniusBackend.Application.Interfaces.UseCases;
 
 public interface IBugService
 {

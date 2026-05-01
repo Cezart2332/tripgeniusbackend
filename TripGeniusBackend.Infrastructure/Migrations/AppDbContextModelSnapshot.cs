@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
+using Pgvector;
 using TripGeniusBackend.Infrastructure.Persistence;
 
 #nullable disable
@@ -21,7 +22,70 @@ namespace TripGeniusBackend.Infrastructure.Migrations
                 .HasAnnotation("ProductVersion", "10.0.6")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
+            NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "vector");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("TripGeniusBackend.Domain.Entities.AiChatHistory", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("SentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("AiChatHistories");
+                });
+
+            modelBuilder.Entity("TripGeniusBackend.Domain.Entities.AiMemory", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Vector>("Embedding")
+                        .IsRequired()
+                        .HasColumnType("vector(2048)");
+
+                    b.Property<string>("MemoryType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("AiMemories");
+                });
 
             modelBuilder.Entity("TripGeniusBackend.Domain.Entities.Bug", b =>
                 {
@@ -68,19 +132,47 @@ namespace TripGeniusBackend.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<int>("SenderId")
+                    b.Property<int>("TripId")
                         .HasColumnType("integer");
 
-                    b.Property<int>("TripId")
+                    b.Property<int>("UserId")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("SenderId");
-
                     b.HasIndex("TripId");
 
+                    b.HasIndex("UserId");
+
                     b.ToTable("Messages");
+                });
+
+            modelBuilder.Entity("TripGeniusBackend.Domain.Entities.Notification", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Notifications");
                 });
 
             modelBuilder.Entity("TripGeniusBackend.Domain.Entities.Preferences", b =>
@@ -177,6 +269,9 @@ namespace TripGeniusBackend.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<Vector>("Embedding")
+                        .HasColumnType("vector");
+
                     b.Property<DateTime>("EndDate")
                         .HasColumnType("timestamp with time zone");
 
@@ -218,7 +313,7 @@ namespace TripGeniusBackend.Infrastructure.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("Action")
+                    b.Property<string>("Content")
                         .IsRequired()
                         .HasColumnType("text");
 
@@ -228,14 +323,9 @@ namespace TripGeniusBackend.Infrastructure.Migrations
                     b.Property<int>("TripId")
                         .HasColumnType("integer");
 
-                    b.Property<int>("UserId")
-                        .HasColumnType("integer");
-
                     b.HasKey("Id");
 
                     b.HasIndex("TripId");
-
-                    b.HasIndex("UserId");
 
                     b.ToTable("TripHistories");
                 });
@@ -248,11 +338,21 @@ namespace TripGeniusBackend.Infrastructure.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<int>("InvitedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("MemberStatus")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<string>("Role")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<int>("TripId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Type")
                         .HasColumnType("integer");
 
                     b.Property<int>("UserId")
@@ -320,13 +420,54 @@ namespace TripGeniusBackend.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("GoogleId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsVerified")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Password")
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("ResetToken")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("ResetTokenExpires")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("VerifyToken")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("VerifyTokenExpires")
+                        .HasColumnType("timestamp with time zone");
+
                     b.HasKey("Id");
 
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("TripGeniusBackend.Domain.Entities.AiChatHistory", b =>
+                {
+                    b.HasOne("TripGeniusBackend.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("TripGeniusBackend.Domain.Entities.AiMemory", b =>
+                {
+                    b.HasOne("TripGeniusBackend.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("TripGeniusBackend.Domain.Entities.Bug", b =>
@@ -342,21 +483,32 @@ namespace TripGeniusBackend.Infrastructure.Migrations
 
             modelBuilder.Entity("TripGeniusBackend.Domain.Entities.Message", b =>
                 {
-                    b.HasOne("TripGeniusBackend.Domain.Entities.User", "Sender")
-                        .WithMany()
-                        .HasForeignKey("SenderId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("TripGeniusBackend.Domain.Entities.Trip", "Trip")
                         .WithMany()
                         .HasForeignKey("TripId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Sender");
+                    b.HasOne("TripGeniusBackend.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Trip");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("TripGeniusBackend.Domain.Entities.Notification", b =>
+                {
+                    b.HasOne("TripGeniusBackend.Domain.Entities.User", "User")
+                        .WithMany("Notifications")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("TripGeniusBackend.Domain.Entities.Preferences", b =>
@@ -400,15 +552,7 @@ namespace TripGeniusBackend.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("TripGeniusBackend.Domain.Entities.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.Navigation("Trip");
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("TripGeniusBackend.Domain.Entities.TripMember", b =>
@@ -420,7 +564,7 @@ namespace TripGeniusBackend.Infrastructure.Migrations
                         .IsRequired();
 
                     b.HasOne("TripGeniusBackend.Domain.Entities.User", "User")
-                        .WithMany()
+                        .WithMany("Trips")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -452,11 +596,15 @@ namespace TripGeniusBackend.Infrastructure.Migrations
 
             modelBuilder.Entity("TripGeniusBackend.Domain.Entities.User", b =>
                 {
+                    b.Navigation("Notifications");
+
                     b.Navigation("Preferences")
                         .IsRequired();
 
                     b.Navigation("Profile")
                         .IsRequired();
+
+                    b.Navigation("Trips");
                 });
 #pragma warning restore 612, 618
         }

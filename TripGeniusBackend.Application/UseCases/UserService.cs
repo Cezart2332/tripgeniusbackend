@@ -1,6 +1,8 @@
 ﻿using TripGeniusBackend.Application.Interfaces;
 using TripGeniusBackend.Application.DTOs.User;
 using TripGeniusBackend.Application.Interfaces.Queries;
+using TripGeniusBackend.Application.Interfaces.UseCases;
+using TripGeniusBackend.Domain.Entities;
 
 namespace TripGeniusBackend.Application.UseCases;
 
@@ -21,7 +23,7 @@ public class UserService : IUserService
         _passwordHasher = passwordHasher;
     }
     
-    public async Task<UserResponse> GetMe()
+    public async Task<UserResponse?> GetMe()
     {
         var user = await _userQueryService.GetUserDetails(_jwtService.GetUserId());
         return user;
@@ -30,7 +32,7 @@ public class UserService : IUserService
     public async Task<UserResponse> Update(UpdateRequest updateRequest)
     {
         var user = await _userRepository.GetUserById(_jwtService.GetUserId());
-        if (user == null) throw new Exception("User not found");
+        if (user == null) throw new KeyNotFoundException("User not found");
         string url = null;
         if (updateRequest.AvatarStream != null)
         { 
@@ -60,7 +62,7 @@ public class UserService : IUserService
         
         if(await _userRepository.UserExists(newEmail)) throw new ArgumentException("Email already exists");
         var user = await _userRepository.GetUserById(_jwtService.GetUserId());
-        if(user == null) throw new Exception("User not found");
+        if(user == null) throw new KeyNotFoundException("User not found");
         user.UpdateEmail(newEmail);
         await _userRepository.SaveChanges();
     }
@@ -71,7 +73,7 @@ public class UserService : IUserService
         var newPassword = changePasswordRequest.NewPassword;
         if(newPassword.Length < 8) throw new ArgumentException("Password must be at least 8 characters long");
         var user = await _userRepository.GetUserById(_jwtService.GetUserId());
-        if(user == null) throw new Exception("User not found");
+        if(user == null) throw new KeyNotFoundException("User not found");
         if(!_passwordHasher.VerifyPassword(oldPassword,user.Password)) throw new ArgumentException("Invalid password");
         user.UpdatePassword(_passwordHasher.HashPassword(newPassword));
         await _userRepository.SaveChanges();
@@ -80,11 +82,31 @@ public class UserService : IUserService
     public async Task DeleteAccount()
     {
         var user = await _userRepository.GetUserById(_jwtService.GetUserId());
-        if(user == null) throw new Exception("User not found");
+        if(user == null) throw new KeyNotFoundException("User not found");
         _fileUploader.DeleteFolder("avatar",user.Id);
         await _userRepository.DeleteUser(user);
         await _userRepository.SaveChanges();
     }
+    public async Task<List<UserResponse>> SearchUsersByEmail(UsersRequest usersRequest)
+    {
+        var users = await _userQueryService.GetUserByUsername(usersRequest);
+        return users;
+    }
 
+    public async Task ReadNotifications()
+    {
+        var user = await _userRepository.GetUserById(_jwtService.GetUserId());
+        if(user == null) throw new KeyNotFoundException("User not found");
+        user.ReadAllNotifications();
+        await _userRepository.SaveChanges();
+    }
 
+    public async Task MarkNotificationAsRead(int id)
+    {
+        var user = await _userRepository.GetUserById(_jwtService.GetUserId());
+        if(user == null) throw new KeyNotFoundException("User not found");
+
+        user.ReadNotification(id);
+        await _userRepository.SaveChanges();
+    }
 }

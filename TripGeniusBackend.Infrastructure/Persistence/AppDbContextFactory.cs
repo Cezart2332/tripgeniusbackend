@@ -19,8 +19,10 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
             .Build();
 
         var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
-        optionsBuilder.UseNpgsql(configuration.GetConnectionString("DefaultConnection")); // 👈 adjust if using Postgres etc.
-
+        optionsBuilder.UseNpgsql(
+            configuration.GetConnectionString("DefaultConnection"),
+            o => o.UseVector()
+            ); 
         return new AppDbContext(optionsBuilder.Options);
     }
 }

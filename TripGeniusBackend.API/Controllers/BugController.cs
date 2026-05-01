@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using TripGeniusBackend.Application.DTOs.User;
 using TripGeniusBackend.Application.Interfaces;
+using TripGeniusBackend.Application.Interfaces.UseCases;
 
 namespace TripGeniusBackend.API.Controllers;
 
