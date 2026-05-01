@@ -18,6 +18,9 @@
     </PackageReference>
     <PackageReference Include="Resend" Version="0.5.0" />
     <PackageReference Include="Scalar.AspNetCore" Version="2.13.22" />
+    <Content Include="appsettings.json">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <PropertyGroup>
