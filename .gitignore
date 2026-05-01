@@ -6,3 +6,5 @@ riderModule.iml
 .idea
 .ai
 TripGeniusBackend.API/wwwroot/
+TripGeniusBackend.API/appsettings.json
+TripGeniusBackend.API/appsettings.Development.json
