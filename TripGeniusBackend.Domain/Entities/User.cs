@@ -10,7 +10,7 @@ public class User
     [Required] [EmailAddress] public string Email { get; private set; } = string.Empty;
     [MinLength(8)] public string Password { get; private set; } = string.Empty;
 
-    public string GoogleId { get; private set; }
+    public string? GoogleId { get; private set; }
     public bool IsVerified { get; private set; } = false;
     public string? VerifyToken { get; private set; }
     public DateTime? VerifyTokenExpires { get; private set; }
