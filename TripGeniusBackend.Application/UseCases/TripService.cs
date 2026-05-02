@@ -98,12 +98,12 @@ public class TripService : ITripService
         if(trip == null) throw new KeyNotFoundException("Trip not found");
         if(trip.Members.Any(m => m.UserId == invitedId)) throw new ArgumentException("User is already a member of this trip");
         if(trip.Members.Count == trip.MaxParticipants) throw new AppException(402,"Trip is full");
+        int ownerId = trip.Members.FirstOrDefault(m => m.Role == Roles.Owner).UserId;
+        var owner = await _userRepository.GetUserById(ownerId);
         if (userId == invitedId)
         {
             trip.RequestMember(invitedId);
-            int ownerId = trip.Members.FirstOrDefault(m => m.Role == Roles.Owner).UserId;
-            var owner = await _userRepository.GetUserById(ownerId);
-            if(owner != null) owner.AddNotification("You have a new member request");
+            if(owner != null) owner.AddNotification($"{invited.Profile.Username} has requested to join ${trip.Title}");
             trip.AddHistory($"{invited.Profile.Username} has requested to join the trip");
             await _userRepository.SaveChanges();
         }
@@ -111,7 +111,7 @@ public class TripService : ITripService
         {
             if (!trip.Members.Any(m => m.UserId == userId && (m.Role == Roles.Owner || m.Role == Roles.Admin))) throw new UnauthorizedAccessException("You are not authorized");
             trip.InivteMember(invitedId);
-            invited.AddNotification("You have been invited to join a trip");
+            invited.AddNotification($"You have been invited to join {trip.Title} by {owner.Profile.Username}");
             trip.AddHistory($"{invited.Profile.Username} has been invited to join the trip");
             await _userRepository.SaveChanges();
         }
@@ -163,7 +163,7 @@ public class TripService : ITripService
             {
                 trip.AcceptMember(invitedId);
                 trip.AddHistory($"{user.Profile.Username} has accepted your request");
-                invited.AddNotification("You have been accepted to join a trip");
+                invited.AddNotification($"You have been accepted to join {trip.Title} by {owner.Profile.Username}");
                 await _userRepository.SaveChanges();
             }
 
@@ -171,7 +171,7 @@ public class TripService : ITripService
             {
                 trip.DeclineMember(invitedId);
                 trip.AddHistory($"{user.Profile.Username} has declined your request");
-                invited.AddNotification("You have been declined to join a trip");
+                invited.AddNotification($"You have been declined to join {trip.Title} by {owner.Profile.Username}");
                 await _userRepository.SaveChanges();
             }
         }

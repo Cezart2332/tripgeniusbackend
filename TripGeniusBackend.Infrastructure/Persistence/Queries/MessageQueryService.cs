@@ -17,7 +17,7 @@ public class MessageQueryService : IMessageQueryService
 
     public async Task<List<MessageResponse>> GetMessages(int tripId)
     {
-        return await _context.Messages.Where(m => m.TripId == tripId).Select(MapToMessageResponse()).ToListAsync();
+        return await _context.Messages.Where(m => m.TripId == tripId).OrderBy(m => m.Date).Select(MapToMessageResponse()).ToListAsync();
     }
     
     
