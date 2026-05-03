@@ -73,7 +73,7 @@ public class AiChatHub : Hub
 
         var tripsContext = trips.Any()
             ? "\nRELEVANT TRIPS FROM THE APP:\n" + string.Join("\n", trips.Select(t =>
-                $"-Id:{t.Id} Title:{t.Title} Description:{t.Description}, Tags: {string.Join(",", t.Tags)}, Price: {t.Price}"))
+                $"-Id:{t.Id} Title:{t.Title} Description:{t.Description}, Tags: {string.Join(",", t.Tags)}, Price: {t.Price} Timelines: {string.Join(",", t.Timelines.Select(tl => $"{tl.Day} {tl.StartingPoint} - {tl.EndPoint} Description: {tl.Note}"))}"))
             : "";
         
         Console.WriteLine($"Trips context: {tripsContext}");
