@@ -19,6 +19,7 @@ public class User
 
     public Profile Profile { get; private set; }
     public Preferences Preferences { get; private set; }
+    public PushSubscription? PushSubscription { get; private set; }
     private readonly List<Notification> _notifications = new();
     public IReadOnlyCollection<Notification> Notifications => _notifications;
     private readonly List<TripMember> _trips = new();
@@ -76,6 +77,11 @@ public class User
     public void UpdatePassword(string newPassword)
     {
         Password = newPassword;
+    }
+
+    public void SubscribeToPush(string endpoint, string p256Dh, string auth)
+    {
+        PushSubscription = PushSubscription.Create(Id, endpoint, p256Dh, auth);
     }
 
     public void AddNotification(string content)

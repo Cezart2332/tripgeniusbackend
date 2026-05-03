@@ -89,6 +89,15 @@ public class UserController : ControllerBase
         var users = await _userService.SearchUsersByEmail(usersRequest);
         return Ok(users);
     }
+
+    [Authorize]
+    [HttpPost("subscribe-to-notifications")]
+    public async Task<IActionResult> SubscribeToNotifications([FromBody] PushSubscribe pushSubscribe)
+    {
+        await _userService.SubscribeToNotifications(pushSubscribe.Endpoint,pushSubscribe.Auth,pushSubscribe.P256dh);
+        return Ok();
+    }
+    
     [Authorize]
     [HttpPost("read-notifications")]
     public async Task<IActionResult> ReadNotifications()

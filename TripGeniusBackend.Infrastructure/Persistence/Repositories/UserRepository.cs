@@ -41,6 +41,17 @@ public class UserRepository : IUserRepository
             .FirstOrDefaultAsync(u => u.Id == id);
     }
 
+    public async Task<List<PushSubscription>> GetUserSubscriptions(int userId)
+    {
+        return await _context.PushSubscriptions.Where(s => s.UserId == userId).ToListAsync();
+    }
+
+    public Task DeleteSubscription(PushSubscription subscription)
+    {
+        _context.PushSubscriptions.Remove(subscription);
+        return Task.CompletedTask;
+    }
+
     public Task CreateUser(User user)
     {
         _context.Users.Add(user);

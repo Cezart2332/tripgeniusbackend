@@ -11,11 +11,13 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
     {
         var basePath = Path.Combine(Directory.GetCurrentDirectory(), 
             "../TripGeniusBackend.API"); 
+        DotNetEnv.Env.TraversePath().Load();
 
         var configuration = new ConfigurationBuilder()
             .SetBasePath(basePath)
             .AddJsonFile("appsettings.json")
             .AddJsonFile("appsettings.Development.json", optional: true)
+            .AddEnvironmentVariables()
             .Build();
 
         var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();

@@ -22,6 +22,7 @@ using Resend;
 using TripGeniusBackend.API.Middleware;
 using TripGeniusBackend.Application.Settings;
 using TripGeniusBackend.Infrastructure.Persistence.Hubs;
+using WebPush;
 
 DotNetEnv.Env.TraversePath().Load();
 
@@ -47,6 +48,9 @@ builder.Services.Configure<GoogleSettings>(
 builder.Services.Configure<OpenRouterSettings>(
     builder.Configuration.GetSection("OpenRouter")
 );
+builder.Services.Configure<VapidSettings>(
+    builder.Configuration.GetSection("Vapid")
+);
 //Application
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
@@ -62,6 +66,7 @@ builder.Services.Configure<ResendClientOptions>( o =>
 } );
 builder.Services.AddTransient<IResend, ResendClient>();
 //Infrastructure
+builder.Services.AddSingleton<WebPushClient>();
 builder.Services.AddScoped<IUserRepository,UserRepository>();
 
 builder.Services.AddScoped<IAiMemoryRepository, AiMemoryRepository>();
@@ -79,6 +84,7 @@ builder.Services.AddScoped<IRefreshTokenQueryService, RefreshTokenQueryService>(
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<ITokenHasher, TokenHasher>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IFileUploader, FileUploader>();
 builder.Services.AddSingleton<IUserIdProvider, UserIdProvider>();
@@ -144,7 +150,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("frontend", policy =>
     {
-        policy.WithOrigins("https://tripgenius.online","http://localhost:5173","http://localhost:5174")
+        policy.WithOrigins("https://tripgenius.online","http://localhost:5173","http://localhost:5174", "http://localhost:4173")
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();

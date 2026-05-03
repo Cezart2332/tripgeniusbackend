@@ -10,6 +10,8 @@ public interface IUserRepository
     public Task<User?> GetUserById(int id);
     public Task<User?> GetUserByToken(string token);
     public Task<User?> GetUserByResetToken(string token);
+    public Task<List<PushSubscription>> GetUserSubscriptions(int userId);
+    public Task DeleteSubscription(PushSubscription subscription);
     public Task CreateUser(User user);
     public Task DeleteUser(User user);
 

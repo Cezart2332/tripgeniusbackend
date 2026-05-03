@@ -16,6 +16,7 @@ public class AppDbContext : DbContext
     
     public DbSet<TripTimeline> TripTimelines { get; set; }
     public DbSet<Preferences> Preferences { get; set; }
+    public DbSet<PushSubscription> PushSubscriptions { get; set; }
     public DbSet<Message> Messages { get; set; }
     public DbSet<Notification> Notifications { get; set; }
     

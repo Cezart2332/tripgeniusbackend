@@ -17,4 +17,6 @@ public interface IUserService
         public Task ReadNotifications();
         public Task MarkNotificationAsRead(int id);
 
+        public Task SubscribeToNotifications(string endpoint, string auth, string p256dh);
+
 }
