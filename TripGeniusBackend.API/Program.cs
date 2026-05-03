@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -84,7 +85,7 @@ builder.Services.AddScoped<IRefreshTokenQueryService, RefreshTokenQueryService>(
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<ITokenHasher, TokenHasher>();
 builder.Services.AddScoped<IEmailService, EmailService>();
-builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddSingleton<INotificationService, NotificationService>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IFileUploader, FileUploader>();
 builder.Services.AddSingleton<IUserIdProvider, UserIdProvider>();
@@ -183,6 +184,10 @@ app.UseStaticFiles(new StaticFileOptions
 app.UseMiddleware<ExceptionMiddleware>(); 
 app.UseMiddleware<LoggingMiddleware>();
 app.UseCors("frontend");
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
 app.UseAuthentication(); 
 app.UseAuthorization();
 
