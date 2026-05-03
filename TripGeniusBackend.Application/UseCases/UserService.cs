@@ -115,7 +115,7 @@ public class UserService : IUserService
         int userId = _jwtService.GetUserId();
         var user = await _userRepository.GetUserById(userId);
         if(user == null) throw new KeyNotFoundException("User not found");
-        if(user.PushSubscription.Endpoint == endpoint) return;
+        if(user.PushSubscription?.Endpoint == endpoint) return;
         user.SubscribeToPush(endpoint, p256dh, auth);
         await _userRepository.SaveChanges();
     }
