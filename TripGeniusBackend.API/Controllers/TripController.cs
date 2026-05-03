@@ -48,6 +48,14 @@ public class TripController : ControllerBase
     }
 
     [Authorize]
+    [HttpGet("get-all-trips")]
+    public async Task<IActionResult> GetAllTrips()
+    {
+        var trips = await _tripService.GetTrips();
+        return Ok(trips);
+    }
+
+    [Authorize]
     [HttpPost("get-trips")]
     public async Task<IActionResult> GetTrips([FromBody] TripsRequest tripsRequest)
     {

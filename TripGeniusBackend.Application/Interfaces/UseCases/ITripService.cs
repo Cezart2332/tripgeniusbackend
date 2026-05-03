@@ -7,6 +7,7 @@ public interface ITripService
 {
     public Task CreateTrip(TripRequest tripRequest);
     public Task <List<TripResponse>> GetTripsForUser(TripsRequest tripsRequest);
+    public Task<List<TripResponse>> GetTrips();
     public Task<TripResponse> GetTrip(int id);
     
     public Task MembershipRequest(int tripId, int invitedId);

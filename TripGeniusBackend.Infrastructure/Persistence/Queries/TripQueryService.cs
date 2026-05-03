@@ -24,7 +24,7 @@ public class TripQueryService : ITripQueryService
 
     public async Task<List<TripResponse>> GetTrips(int userId)
     {
-        return await _context.Trips.Where(t=> t.Members.Any(m => m.UserId == userId)).Select(MapToTripResponse(userId)).ToListAsync();
+        return await _context.Trips.Select(MapToTripResponse(userId)).ToListAsync();
     }
 
     public async Task<List<TripResponse>> GetUserTrips(int userId)

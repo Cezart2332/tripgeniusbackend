@@ -83,6 +83,13 @@ public class TripService : ITripService
         
         return trips;
     }
+
+    public async Task<List<TripResponse>> GetTrips()
+    {
+        int userId = _jwtService.GetUserId();
+        var trips = await _tripQueryService.GetTrips(userId);
+        return trips;
+    }
     
     public async Task<TripResponse> GetTrip(int tripId)
     {
@@ -106,7 +113,7 @@ public class TripService : ITripService
         {
             trip.RequestMember(invitedId);
             if(owner != null) owner.AddNotification($"{invited.Profile.Username} has requested to join ${trip.Title}");
-            _notificationService.SendNotificationAsync(ownerId, "You have a new request to join the trip",
+            _notificationService.SendNotificationAsync(ownerId, "Request",
                 $"{invited.Profile.Username} has requested to join your trip", $"/app/trip/{trip.Id}?view=members"); 
             trip.AddHistory($"{invited.Profile.Username} has requested to join the trip");
             await _userRepository.SaveChanges();
@@ -116,7 +123,7 @@ public class TripService : ITripService
             if (!trip.Members.Any(m => m.UserId == userId && (m.Role == Roles.Owner || m.Role == Roles.Admin))) throw new UnauthorizedAccessException("You are not authorized");
             trip.InivteMember(invitedId);
             invited.AddNotification($"You have been invited to join {trip.Title} by {owner.Profile.Username}");
-            _notificationService.SendNotificationAsync(invitedId, "You have a new invite to join a trip",
+            _notificationService.SendNotificationAsync(invitedId, "Invite",
                 $"You have been invited to join {trip.Title} by {owner.Profile.Username}", $"/app/profile?tab=invites");
             trip.AddHistory($"{invited.Profile.Username} has been invited to join the trip");
             await _userRepository.SaveChanges();
