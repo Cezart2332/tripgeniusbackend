@@ -85,6 +85,12 @@ public class TripQueryService : ITripQueryService
                 AvatarUrl = member.User.Profile.ProfileURL,
                 MemberStatus = member.MemberStatus.ToString()
             }).ToList(),
+            History = t.History.OrderBy(th => th.Date).Select(history => new TripHistoryResponse
+            {
+                Id = history.Id,
+                Date = history.Date,
+                Content = history.Content
+            }).ToList(),
             IsUserMember = t.Members.Any(m => m.UserId == userId)
         };
     }

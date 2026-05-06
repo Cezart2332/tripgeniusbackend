@@ -43,6 +43,6 @@ public class TripRepository : ITripRepository
     {
         var vector = new Vector(queryEmbedding);
         return await _context.Trips.Where(t => t.Embedding != null && !t.Members.Any(m => m.UserId == userId))
-            .OrderBy(t => t.Embedding!.CosineDistance(vector)).Take(limit).ToListAsync();
+            .OrderBy(t => t.Embedding!.CosineDistance(vector)).Include(t => t.Timelines).Take(limit).ToListAsync();
     }
 }

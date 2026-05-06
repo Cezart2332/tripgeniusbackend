@@ -67,6 +67,7 @@ public class AiChatHub : Hub
         var tripEmbedding = await _embeddingService.GetEmbedding($"{content} {string.Join(", ", preferences.Tags)} {preferences.MaxGroupSize}");
         var memories = await _aiMemoryRepository.SearchSimilarAsync(querryEmbedding, userId);
         var trips = await _tripRepository.SearchSimilarAsync(tripEmbedding, userId);
+        Console.WriteLine($"Trips found: {trips.Count}");
         var memoryContext = memories.Any()
             ? "WHAT YOU KNOW ABOUT THIS USER:\n" + string.Join("\n", memories.Select(m => $"- {m.Content}"))
             : "";

@@ -112,7 +112,7 @@ public class TripService : ITripService
         if (userId == invitedId)
         {
             trip.RequestMember(invitedId);
-            if(owner != null) owner.AddNotification($"{invited.Profile.Username} has requested to join ${trip.Title}");
+            if(owner != null) owner.AddNotification($"{invited.Profile.Username} has requested to join {trip.Title}");
             _notificationService.SendNotificationAsync(ownerId, "Request",
                 $"{invited.Profile.Username} has requested to join your trip", $"/app/trip/{trip.Id}?view=members"); 
             trip.AddHistory($"{invited.Profile.Username} has requested to join the trip");

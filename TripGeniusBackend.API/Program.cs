@@ -49,6 +49,9 @@ builder.Services.Configure<GoogleSettings>(
 builder.Services.Configure<OpenRouterSettings>(
     builder.Configuration.GetSection("OpenRouter")
 );
+builder.Services.Configure<OpenTripMapSettings>(
+    builder.Configuration.GetSection("OpenTripMap")
+);
 builder.Services.Configure<VapidSettings>(
     builder.Configuration.GetSection("Vapid")
 );

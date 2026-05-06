@@ -17,5 +17,6 @@ public class TripResponse
     public List<string> Tags { get; set; }
     public List<TripTimelineResponse?> Timelines { get; set; }
     public List<TripMemberResponse?> Members { get; set; }
+    public List<TripHistoryResponse?> History { get; set; }
     public bool IsUserMember { get; set; }
 }
