@@ -21,6 +21,6 @@ public class AiChatQueryService : IAiChatQueryService
 
     public async Task<List<AiChatResponse>> GetShortTermMemory(int userId)
     {
-        return await _context.AiChatHistories.Where(a => a.UserId == userId).OrderByDescending(a => a.SentAt).Take(10).OrderBy(a => a.SentAt) .Select(ah => new AiChatResponse{Message = ah.Content, Role = ah.Role}).ToListAsync();
+        return await _context.AiChatHistories.Where(a => a.UserId == userId).OrderByDescending(a => a.SentAt).Take(6).OrderBy(a => a.SentAt) .Select(ah => new AiChatResponse{Message = ah.Content, Role = ah.Role}).ToListAsync();
     }
 }

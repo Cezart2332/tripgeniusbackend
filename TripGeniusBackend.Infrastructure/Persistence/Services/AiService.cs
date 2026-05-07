@@ -41,6 +41,10 @@ private const string SystemPrompt = """
                                             4. "USER PREFERENCES" → Apply silently, never mention explicitly.
 
                                             If NEITHER app trips NOR locations are provided in context, respond politely that you have no specific information and invite the user to explore the "Discover" section.
+                                            
+                                            VARIETY: Never suggest the same locations as in previous messages in this conversation.
+                                            If the user asks for "more" or "other options", provide DIFFERENT suggestions than before.
+                                            Rotate between cultural, natural, and culinary recommendations unless the user specifies.
 
                                             FACTS & STRICT LIMITATIONS: 
                                             - Never invent locations, prices, distances, or dates. If unsure, say so.
@@ -61,16 +65,24 @@ private const string SystemPrompt = """
     public async Task AskAsync(List<AiChatResponse> lastMessages,string prompt,string memoryContext,string relevantTrips,string userPreferences, Func<string, Task> onChunk)
     {
         var messages = lastMessages.Select(m => new { role = m.Role, content = m.Message }).ToList();
-        
+        var conversationContext = string.Join("\n", 
+            lastMessages.TakeLast(6).Select(m => $"{m.Role}: {m.Message}"));
         
         var relevantLocations = string.Empty;
-        var placeTask = ExtractAsync($"Extract the place (city, country, region) from this prompt. Return only the place name, nothing else. If no place is mentioned, return nothing. Prompt: {prompt}");
-        var tagsTask = ExtractAsync($"Extract relevant tags from this list: [interesting_places, natural, cultural, historic, religion, architecture, industrial_facilities, amusements, sport, tourist_facilities, foods, accomodations]. Return only a comma-separated list of matching tags. If the prompt is too generic, return 'interesting_places'. Prompt: {prompt}");
-        
-        await Task.WhenAll(placeTask, tagsTask);
+        var extracted = await ExtractAsync(
+            "From this conversation, extract TWO things and return ONLY valid JSON:\n" +
+            "{\n" +
+            "  \"place\": \"city or country in English, empty string if none\",\n" +
+            "  \"tags\": \"comma-separated tags from: [interesting_places, natural, cultural, historic, religion, architecture, amusements, sport, foods, accommodations]\"\n" +
+            "}\n\n" +
+            "IMPORTANT: If the current message refers to a place mentioned earlier (e.g. 'tell me more', 'what about history there'), extract that place from the conversation history.\n\n" +
+            "Conversation history:\n" + conversationContext + "\n\n" +
+            "Current message: " + prompt
+        );
 
-        string place = placeTask.Result;
-        string tags = tagsTask.Result;
+        var extractedDoc = JsonDocument.Parse(extracted);
+        string place = extractedDoc.RootElement.GetProperty("place").GetString() ?? "";
+        string tags = extractedDoc.RootElement.GetProperty("tags").GetString() ?? "interesting_places";
         
         if (!string.IsNullOrWhiteSpace(place) && !string.IsNullOrWhiteSpace(tags))
         {
@@ -93,6 +105,7 @@ private const string SystemPrompt = """
                     tags = Uri.EscapeDataString(tags);
                     Console.WriteLine($"Tags: {tags}");
 
+                    Console.WriteLine($"https://api.opentripmap.com/0.1/en/places/radius?radius=5000&lon={lon}&lat={lat}&kinds={tags}&rate=1&format=json&limit=50&apikey={_openTripMapApiKey}");;
                     var locationResponse = await _httpClient.GetAsync(
                         $"https://api.opentripmap.com/0.1/en/places/radius?radius=5000&lon={lon}&lat={lat}&kinds={tags}&rate=1&format=json&limit=50&apikey={_openTripMapApiKey}");
                     Console.WriteLine($"Location response status: {locationResponse.StatusCode}");
@@ -101,54 +114,29 @@ private const string SystemPrompt = """
                     {
                         var locationJson = await locationResponse.Content.ReadAsStringAsync();
                         using var locationDoc = JsonDocument.Parse(locationJson);
-
-                        var xids = locationDoc.RootElement
-                            .EnumerateArray()
-                            .Where(x => x.TryGetProperty("xid", out _))
-                            .Take(5)
-                            .Select(x => x.GetProperty("xid").GetString())
-                            .ToList();
                         
                         
-                        var semaphore = new SemaphoreSlim(5); 
+                        var elements = locationDoc.RootElement.EnumerateArray().ToList();
 
-                        var tasks = xids.Select(async xid =>
+                        var random = new Random();
+                        
+                        for (int i = elements.Count - 1; i > 0; i--)
                         {
-                            await semaphore.WaitAsync();
-                            try
-                            {
-                                var detailResponse = await _httpClient.GetAsync(
-                                    $"https://api.opentripmap.com/0.1/en/places/xid/{xid}?apikey={_openTripMapApiKey}");
+                            int j = random.Next(i + 1);
+                            (elements[i], elements[j]) = (elements[j], elements[i]);
+                        }
 
-                                if (!detailResponse.IsSuccessStatusCode) return null;
-
-                                var detailJson = await detailResponse.Content.ReadAsStringAsync();
-
-                                using var detailDoc = JsonDocument.Parse(detailJson);
-                                var detailRoot = detailDoc.RootElement;
-
-                                var name = detailRoot.TryGetProperty("name", out var n) ? n.GetString() : "Unknown";
-                                var text = detailRoot.TryGetProperty("wikipedia_extracts", out var wiki)
-                                           && wiki.TryGetProperty("text", out var t)
-                                    ? t.GetString() : null;
-
-                                if (!string.IsNullOrEmpty(name) && name != "Unknown")
-                                    return text != null ? $"- {name}: {text}" : $"- {name}";
-
-                                return null;
-                            }
-                            finally
-                            {
-                                semaphore.Release();
-                            }
-                        });
-
-                        var descriptions = (await Task.WhenAll(tasks))
-                            .Where(x => x != null)
+                        var xids = elements
+                            .Take(7)
+                            .Select(x => new {
+                                name = x.TryGetProperty("name", out var n) ? n.GetString() : null,
+                                kinds = x.TryGetProperty("kinds", out var k) ? k.GetString() : null
+                            })
+                            .Where(x => !string.IsNullOrEmpty(x.name))
                             .ToList();
 
-                        if (descriptions.Count > 0)
-                            relevantLocations = $"Places in {place}:\n" + string.Join("\n", descriptions);
+                        relevantLocations = $"Places in {place}:\n" + 
+                                            string.Join("\n", xids.Select(x => $"- {x.name} ({x.kinds})"));
                     }
                 }
             }

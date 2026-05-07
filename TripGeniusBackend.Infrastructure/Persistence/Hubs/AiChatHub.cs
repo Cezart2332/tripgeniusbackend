@@ -67,7 +67,6 @@ public class AiChatHub : Hub
         var tripEmbedding = await _embeddingService.GetEmbedding($"{content} {string.Join(", ", preferences.Tags)} {preferences.MaxGroupSize}");
         var memories = await _aiMemoryRepository.SearchSimilarAsync(querryEmbedding, userId);
         var trips = await _tripRepository.SearchSimilarAsync(tripEmbedding, userId);
-        Console.WriteLine($"Trips found: {trips.Count}");
         var memoryContext = memories.Any()
             ? "WHAT YOU KNOW ABOUT THIS USER:\n" + string.Join("\n", memories.Select(m => $"- {m.Content}"))
             : "";
@@ -77,7 +76,6 @@ public class AiChatHub : Hub
                 $"-Id:{t.Id} Title:{t.Title} Description:{t.Description}, Tags: {string.Join(",", t.Tags)}, Price: {t.Price} Timelines: {string.Join(",", t.Timelines.Select(tl => $"{tl.Day} {tl.StartingPoint} - {tl.EndPoint} Description: {tl.Note}"))}"))
             : "";
         
-        Console.WriteLine($"Trips context: {tripsContext}");
         var preferencesContext = "";
         if (preferProfile)
         {
