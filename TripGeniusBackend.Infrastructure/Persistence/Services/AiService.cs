@@ -62,71 +62,146 @@ private const string SystemPrompt = """
         _openTripMapApiKey = openTripMapSettings.Value.ApiKey;
     }
 
-    public async Task AskAsync(List<AiChatResponse> lastMessages,string prompt,string memoryContext,string relevantTrips,string userPreferences, Func<string, Task> onChunk)
+    public async Task AskAsync(List<AiChatResponse> lastMessages, string prompt, string memoryContext, string relevantTrips, string userPreferences, Func<string, Task> onChunk)
+{
+    var messages = lastMessages.Select(m => new { role = m.Role, content = m.Message }).ToList();
+    var conversationContext = string.Join("\n", lastMessages.TakeLast(6).Select(m => $"{m.Role}: {m.Message}"));
+    var random = new Random();
+    var relevantLocations = string.Empty;
+
+    // Taguri comerciale — incluse in rezultate DOAR dacă userul le-a cerut explicit
+    var commercialKinds = new HashSet<string> {
+        "banks", "atm", "bureau_de_change", "supermarkets", "conveniences",
+        "malls", "shops", "car_rental", "car_wash", "fuel", "charging_station",
+        "fast_food", "apartments", "accomodations", "guest_houses", "motels",
+        "other_hotels", "hostels", "resorts", "campsites"
+    };
+
+    var extracted = await ExtractAsync(
+        "From this conversation, extract TWO things and return ONLY valid JSON, no markdown, no explanation:\n" +
+        "{\n" +
+        "  \"place\": \"city or country in English, empty string if none\",\n" +
+        "  \"tags\": \"1-3 comma-separated tags from the list below — pick the MOST SPECIFIC match\"\n" +
+        "}\n\n" +
+        "AVAILABLE TAGS:\n" +
+        "Natural: natural, islands, natural_springs, hot_springs, geysers, mountain_peaks, volcanoes, caves, canyons, rock_formations, rivers, waterfalls, lagoons, reservoirs, beaches, golden_sand_beaches, white_sand_beaches, national_parks, wildlife_reserves, natural_monuments, glaciers\n" +
+        "Cultural: cultural, museums, history_museums, military_museums, archaeological_museums, art_galleries, open_air_museums, science_museums, planetariums, zoos, aquariums, opera_houses, music_venues, concert_halls, cinemas, gardens_and_parks, squares, sculptures, fountains\n" +
+        "Historic: historic, historical_places, historic_districts, battlefields, castles, hillforts, defensive_walls, bunkers, monuments, archaeology, megaliths, roman_villas, cave_paintings, cemeteries, war_memorials, mausoleums\n" +
+        "Religion: religion, churches, eastern_orthodox_churches, catholic_churches, cathedrals, mosques, synagogues, buddhist_temples, monasteries\n" +
+        "Architecture: architecture, palaces, manor_houses, pyramids, amphitheatres, bridges, towers, observation_towers, lighthouses, skyscrapers, wineries\n" +
+        "Industrial: industrial_facilities, railway_stations, dams, mills, abandoned_railway_stations\n" +
+        "Amusements: amusements, amusement_parks, water_parks, thermal_baths, saunas\n" +
+        "Sport: sport, skiing, diving, climbing, surfing, kitesurfing, stadiums, pools\n" +
+        "Food & Drink (only if user explicitly asks): foods, restaurants, cafes, pubs, bars\n" +
+        "Accommodation (only if user explicitly asks): other_hotels, hostels, villas_and_chalet, campsites\n" +
+        "Facilities (only if user explicitly asks): atm, banks, shops, car_rental, fuel\n" +
+        "Other: view_points, tourist_object, historic_object, interesting_places\n\n" +
+        "RULES:\n" +
+        "- Default to 'interesting_places' for generic questions like 'what to visit', 'what to do'\n" +
+        "- NEVER pick banks, atm, shops, accommodations unless the user explicitly asks for them\n" +
+        "- If the current message refers to a place mentioned earlier ('tell me more', 'what else', 'other options'), carry forward that place\n\n" +
+        "Conversation history:\n" + conversationContext + "\n\n" +
+        "Current message: " + prompt
+    );
+
+    string place = "";
+    string tags = "interesting_places";
+
+    try
     {
-        var messages = lastMessages.Select(m => new { role = m.Role, content = m.Message }).ToList();
-        var conversationContext = string.Join("\n", 
-            lastMessages.TakeLast(6).Select(m => $"{m.Role}: {m.Message}"));
+        // Curățăm răspunsul de eventuale markdown fences
+        var cleanExtracted = extracted.Trim().TrimStart('`').TrimEnd('`');
+        if (cleanExtracted.StartsWith("json")) cleanExtracted = cleanExtracted[4..];
         
-        var relevantLocations = string.Empty;
-        var extracted = await ExtractAsync(
-            "From this conversation, extract TWO things and return ONLY valid JSON:\n" +
-            "{\n" +
-            "  \"place\": \"city or country in English, empty string if none\",\n" +
-            "  \"tags\": \"comma-separated tags from: [interesting_places, natural, cultural, historic, religion, architecture, amusements, sport, foods, accommodations]\"\n" +
-            "}\n\n" +
-            "IMPORTANT: If the current message refers to a place mentioned earlier (e.g. 'tell me more', 'what about history there'), extract that place from the conversation history.\n\n" +
-            "Conversation history:\n" + conversationContext + "\n\n" +
-            "Current message: " + prompt
-        );
+        var extractedDoc = JsonDocument.Parse(cleanExtracted);
+        place = extractedDoc.RootElement.GetProperty("place").GetString()?.Trim() ?? "";
+        tags = extractedDoc.RootElement.GetProperty("tags").GetString()?.Trim() ?? "interesting_places";
+    }
+    catch
+    {
+        Console.WriteLine("[Extract] Failed to parse JSON, using defaults.");
+    }
 
-        var extractedDoc = JsonDocument.Parse(extracted);
-        string place = extractedDoc.RootElement.GetProperty("place").GetString() ?? "";
-        string tags = extractedDoc.RootElement.GetProperty("tags").GetString() ?? "interesting_places";
-        
-        if (!string.IsNullOrWhiteSpace(place) && !string.IsNullOrWhiteSpace(tags))
+    var requestedTags = tags.Split(',').Select(t => t.Trim().ToLower()).ToHashSet();
+
+    if (!string.IsNullOrWhiteSpace(place))
+    {
+        try
         {
-            try
+            var geoResponse = await _httpClient.GetAsync(
+                $"https://api.opentripmap.com/0.1/en/places/geoname?name={Uri.EscapeDataString(place)}&apikey={_openTripMapApiKey}");
+
+            if (geoResponse.IsSuccessStatusCode)
             {
-                var geoResponse = await _httpClient.GetAsync(
-                    $"https://api.opentripmap.com/0.1/en/places/geoname?name={Uri.EscapeDataString(place)}&apikey={_openTripMapApiKey}");
+                var geoJson = await geoResponse.Content.ReadAsStringAsync();
+                using var geoDoc = JsonDocument.Parse(geoJson);
 
-                if (geoResponse.IsSuccessStatusCode)
+                if (!geoDoc.RootElement.TryGetProperty("lat", out var latEl) ||
+                    !geoDoc.RootElement.TryGetProperty("lon", out var lonEl))
                 {
-                    var geoJson = await geoResponse.Content.ReadAsStringAsync();
-                    using var geoDoc = JsonDocument.Parse(geoJson);
-                    var lat = geoDoc.RootElement.GetProperty("lat").GetDouble();
-                    var lon = geoDoc.RootElement.GetProperty("lon").GetDouble();
-                    Console.WriteLine($"Lat: {lat}, Lon: {lon}");
-                    
+                    Console.WriteLine("[OpenTripMap] Geo response missing lat/lon.");
+                }
+                else
+                {
+                    var lat = latEl.GetDouble();
+                    var lon = lonEl.GetDouble();
+                    var escapedTags = Uri.EscapeDataString(tags.Replace(" ", ""));
 
-                    if (string.IsNullOrWhiteSpace(tags)) tags = "interesting_places";
-                    tags = tags.Replace(" ", "");
-                    tags = Uri.EscapeDataString(tags);
-                    Console.WriteLine($"Tags: {tags}");
-
-                    Console.WriteLine($"https://api.opentripmap.com/0.1/en/places/radius?radius=5000&lon={lon}&lat={lat}&kinds={tags}&rate=1&format=json&limit=50&apikey={_openTripMapApiKey}");;
                     var locationResponse = await _httpClient.GetAsync(
-                        $"https://api.opentripmap.com/0.1/en/places/radius?radius=5000&lon={lon}&lat={lat}&kinds={tags}&rate=1&format=json&limit=50&apikey={_openTripMapApiKey}");
-                    Console.WriteLine($"Location response status: {locationResponse.StatusCode}");
-                    
+                        $"https://api.opentripmap.com/0.1/en/places/radius?radius=8000&lon={lon}&lat={lat}" +
+                        $"&kinds={escapedTags}&rate=2&format=json&limit=100&apikey={_openTripMapApiKey}");
+
                     if (locationResponse.IsSuccessStatusCode)
                     {
                         var locationJson = await locationResponse.Content.ReadAsStringAsync();
                         using var locationDoc = JsonDocument.Parse(locationJson);
-                        
-                        
                         var elements = locationDoc.RootElement.EnumerateArray().ToList();
 
-                        var random = new Random();
-                        
-                        for (int i = elements.Count - 1; i > 0; i--)
+                        var filtered = elements
+                            .Where(x =>
+                            {
+                                // Exclude locuri fără nume
+                                if (!x.TryGetProperty("name", out var n) || string.IsNullOrWhiteSpace(n.GetString())) return false;
+
+                                // Rate minim 2
+                                if (!x.TryGetProperty("rate", out var r) || r.GetInt32() < 2) return false;
+
+                                // Filtrare comerciale — exclude dacă kinds conține DOAR categorii comerciale necerute
+                                if (x.TryGetProperty("kinds", out var k))
+                                {
+                                    var kindList = (k.GetString() ?? "").Split(',').Select(s => s.Trim().ToLower()).ToList();
+                                    var hasOnlyCommercial = kindList.All(kind => commercialKinds.Any(c => kind.Contains(c)));
+                                    if (hasOnlyCommercial)
+                                    {
+                                        // Permite doar dacă userul a cerut explicit acel kind
+                                        var userRequestedThis = kindList.Any(kind => requestedTags.Any(tag => kind.Contains(tag)));
+                                        if (!userRequestedThis) return false;
+                                    }
+                                }
+
+                                return true;
+                            })
+                            .OrderByDescending(x => x.TryGetProperty("rate", out var r) ? r.GetInt32() : 0)
+                            .ToList();
+
+                        // Dacă filtrarea e prea strictă, fallback fără filtrul comercial
+                        if (filtered.Count < 3)
                         {
-                            int j = random.Next(i + 1);
-                            (elements[i], elements[j]) = (elements[j], elements[i]);
+                            filtered = elements
+                                .Where(x => x.TryGetProperty("name", out var n) && !string.IsNullOrWhiteSpace(n.GetString()))
+                                .OrderByDescending(x => x.TryGetProperty("rate", out var r) ? r.GetInt32() : 0)
+                                .ToList();
                         }
 
-                        var xids = elements
+                        // Shuffle pe top 20 pentru varietate
+                        var top20 = filtered.Take(20).ToList();
+                        for (int i = top20.Count - 1; i > 0; i--)
+                        {
+                            int j = random.Next(i + 1);
+                            (top20[i], top20[j]) = (top20[j], top20[i]);
+                        }
+
+                        var xids = top20
                             .Take(7)
                             .Select(x => new {
                                 name = x.TryGetProperty("name", out var n) ? n.GetString() : null,
@@ -135,84 +210,73 @@ private const string SystemPrompt = """
                             .Where(x => !string.IsNullOrEmpty(x.name))
                             .ToList();
 
-                        relevantLocations = $"Places in {place}:\n" + 
-                                            string.Join("\n", xids.Select(x => $"- {x.name} ({x.kinds})"));
+                        if (xids.Count > 0)
+                            relevantLocations = $"Places in {place}:\n" +
+                                string.Join("\n", xids.Select(x => $"- {x.name} ({x.kinds})"));
                     }
                 }
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[OpenTripMap] Error: {ex.Message}");
-            }
         }
-
-        
-
-        var fullMessages = new List<object>();
-
-        fullMessages.Add(new
+        catch (Exception ex)
         {
-            role = "system",
-            content = SystemPrompt
-        });
-
-        fullMessages.AddRange(messages);
-        Console.WriteLine("Relevant locations: " + relevantLocations);
-        Console.WriteLine("Relevant trips: " + relevantTrips);
-        
-        fullMessages.Add(new
-        {
-            role = "system",
-            content = "IMPORTANT CONTEXT FOR THIS USER:\n" 
-                      + (string.IsNullOrEmpty(relevantTrips) ? "" : $"RELEVANT TRIPS FROM THE APP:\n{relevantTrips}\n\n")
-                      + (string.IsNullOrEmpty(relevantLocations) ? "" : $"RELEVANT LOCATIONS:\n{relevantLocations}\n\n")
-                      + userPreferences 
-                      + memoryContext
-        });
-
-        
-        fullMessages.Add(new
-        {
-            role = "user",
-            content = prompt
-        });
-        var body = new
-        {
-            model = "openai/gpt-oss-120b:free",
-            stream = true,
-            messages = fullMessages
-        };
-        var request = new HttpRequestMessage(HttpMethod.Post, "https://openrouter.ai/api/v1/chat/completions");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
-        request.Headers.Add("HTTP-Referer", "http://localhost");
-        request.Headers.Add("X-Title", "TripGenius");
-
-        request.Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8);
-        var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
-        response.EnsureSuccessStatusCode();
-        using var stream = await response.Content.ReadAsStreamAsync();
-        using var reader = new StreamReader(stream);
-
-        while (!reader.EndOfStream)
-        {
-            var line = await reader.ReadLineAsync();
-            if(string.IsNullOrEmpty(line)) continue;
-            if(!line.StartsWith("data:")) continue;
-            var json = line.Substring(5).Trim();
-            
-            if(json.Equals("[DONE]")) break;
-            using var doc = JsonDocument.Parse(json);
-            if (doc.RootElement.GetProperty("choices")[0].GetProperty("delta")
-                .TryGetProperty("content", out var contentEl))
-            {
-                var content = contentEl.GetString();
-                if (!string.IsNullOrEmpty(content))
-                {
-                    await onChunk(content);
-                }
-            }
-          }
+            Console.WriteLine($"[OpenTripMap] Error: {ex.Message}");
+        }
     }
+
+    Console.WriteLine("Place: " + place);
+    Console.WriteLine("Tags: " + tags);
+    Console.WriteLine("Relevant locations: " + relevantLocations);
+    Console.WriteLine("Relevant trips: " + relevantTrips);
+
+    var fullMessages = new List<object> { new { role = "system", content = SystemPrompt } };
+    fullMessages.AddRange(messages);
+    fullMessages.Add(new
+    {
+        role = "system",
+        content = "IMPORTANT CONTEXT FOR THIS USER:\n"
+                  + (string.IsNullOrEmpty(relevantTrips) ? "" : $"RELEVANT TRIPS FROM THE APP:\n{relevantTrips}\n\n")
+                  + (string.IsNullOrEmpty(relevantLocations) ? "" : $"RELEVANT LOCATIONS:\n{relevantLocations}\n\n")
+                  + userPreferences
+                  + memoryContext
+    });
+    fullMessages.Add(new { role = "user", content = prompt });
+
+    var body = new
+    {
+        model = "openai/gpt-oss-120b:free",
+        stream = true,
+        messages = fullMessages
+    };
+
+    var request = new HttpRequestMessage(HttpMethod.Post, "https://openrouter.ai/api/v1/chat/completions");
+    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+    request.Headers.Add("HTTP-Referer", "http://localhost");
+    request.Headers.Add("X-Title", "TripGenius");
+    request.Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8);
+
+    var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+    response.EnsureSuccessStatusCode();
+
+    using var stream = await response.Content.ReadAsStreamAsync();
+    using var reader = new StreamReader(stream);
+
+    while (!reader.EndOfStream)
+    {
+        var line = await reader.ReadLineAsync();
+        if (string.IsNullOrEmpty(line) || !line.StartsWith("data:")) continue;
+        var json = line[5..].Trim();
+        if (json == "[DONE]") break;
+
+        using var doc = JsonDocument.Parse(json);
+        if (doc.RootElement.GetProperty("choices")[0].GetProperty("delta")
+            .TryGetProperty("content", out var contentEl))
+        {
+            var content = contentEl.GetString();
+            if (!string.IsNullOrEmpty(content))
+                await onChunk(content);
+        }
+    }
+}
     public async Task<string> ExtractAsync(string prompt)
     {
         var body = new
