@@ -70,12 +70,21 @@ public class UserQueryService : IUserQueryService
                 Timelines = trip.Timelines.Select(timeline => new TripTimelineResponse  
                 {
                     Id = timeline.Id,
-                    Day = timeline.Day,
+                    StartDay = timeline.StartDay,
+                    EndDay = timeline.EndDay,
                     StartingPoint = timeline.StartingPoint,
                     EndPoint = timeline.EndPoint,
                     FromCoords = timeline.FromCoords,
                     ToCoords = timeline.ToCoords,
-                    Note = timeline.Note
+                    Note = timeline.Note,
+                    Activities = timeline.Activities.Select(a => new TripActivityRequest
+                        {
+                        Name = a.Name,
+                        Description = a.Description,
+                        Cost = a.Cost,
+                        Link = a.Link,
+                        Type = a.Type
+                        }).ToList()
                 }).ToList(),
                 Members = trip.Members.Select(member => new TripMemberResponse
                 {

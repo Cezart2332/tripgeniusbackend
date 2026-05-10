@@ -1,6 +1,7 @@
 ﻿// AppDbContextFactory.cs
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 
 namespace TripGeniusBackend.Infrastructure.Persistence;
@@ -24,7 +25,9 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
         optionsBuilder.UseNpgsql(
             configuration.GetConnectionString("DefaultConnection"),
             o => o.UseVector()
-            ); 
+            )
+            .ConfigureWarnings(w => 
+                w.Ignore(RelationalEventId.PendingModelChangesWarning)); ; 
         return new AppDbContext(optionsBuilder.Options);
     }
 }

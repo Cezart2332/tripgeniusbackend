@@ -4,7 +4,8 @@ public class UpdateTimelineRequest
 {
     public int Id { get; set; }
     public int TripId { get; set; }
-    public int Day { get; set; }
+    public int StartDay { get; set; }
+    public int EndDay { get; set; }
     public string StartingPoint { get; set; } = string.Empty;
     public string EndPoint { get; set; } = string.Empty;
     public double[] FromCoords { get; set; } = new double[2];

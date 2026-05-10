@@ -1,8 +1,10 @@
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
@@ -25,6 +27,8 @@ using TripGeniusBackend.Application.Settings;
 using TripGeniusBackend.Infrastructure.Persistence.Hubs;
 using WebPush;
 
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
 DotNetEnv.Env.TraversePath().Load();
 
 var builder = WebApplication.CreateBuilder(args);
@@ -34,12 +38,17 @@ builder.Configuration
 
 
 builder.Services.AddSignalR();
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
+
+
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(
-        builder.Configuration.GetConnectionString("DefaultConnection"),
-        o => o.UseVector()
-        ));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"), o => o.UseVector())
+        .ConfigureWarnings(w => 
+            w.Ignore(RelationalEventId.PendingModelChangesWarning))); 
     
 builder.Services.AddHttpContextAccessor();
 
@@ -56,14 +65,23 @@ builder.Services.Configure<VapidSettings>(
     builder.Configuration.GetSection("Vapid")
 );
 //Application
+builder.Services.AddMemoryCache();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ITripService, TripService>();
 builder.Services.AddScoped<IBugService, BugService>();
 builder.Services.AddScoped<IAiChatService, AiChatService>();
 builder.Services.AddHttpClient<ResendClient>();
-builder.Services.AddHttpClient<IAiService, AiService>();
+builder.Services.AddHttpClient<IAiService,AiService>(client =>
+{
+    client.Timeout = TimeSpan.FromMinutes(10); 
+});
 builder.Services.AddHttpClient<IEmbeddingService, EmbeddingService>();
+builder.Services.AddHttpClient<GeocodingService>(client =>
+{
+    client.DefaultRequestHeaders.Add("User-Agent", "TripGenius/1.0");
+    client.DefaultRequestHeaders.Add("Accept-Language", "ro");
+});
 builder.Services.Configure<ResendClientOptions>( o =>
 {
     o.ApiToken = builder.Configuration["Email:ResendApiKey"]!;

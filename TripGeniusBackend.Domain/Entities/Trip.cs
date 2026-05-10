@@ -41,13 +41,11 @@ public class Trip
         Price = price;
     }
     
-    public void AddTimeline(int day, string startingPoint, double[] fromCoords, string endPoint, double[] toCoords, string note)
+    public TripTimeline AddTimeline(int startDay,int endDay, string startingPoint, double[] fromCoords, string endPoint, double[] toCoords, string note)
     {
-        foreach (var timeline in _timelines.Where(t => t.Day >= day))
-        {
-            timeline.UpdateDay(timeline.Day + 1);
-        }
-        _timelines.Add(new TripTimeline(day, startingPoint, fromCoords, endPoint, toCoords, note));
+        var timeline = new TripTimeline(startDay,endDay, startingPoint, fromCoords, endPoint, toCoords, note);
+        _timelines.Add(timeline);
+        return timeline;
     }
     
     public void RemoveTimeline(int id)
@@ -55,12 +53,6 @@ public class Trip
         var timeline = _timelines.FirstOrDefault(t => t.Id == id);
         if(timeline == null) throw new Exception("Timeline not found");
         _timelines.Remove(timeline);
-        int index = 1;
-        foreach (var t in _timelines)
-        {
-            t.UpdateDay(index);
-            index++;
-        }
     }
 
     public void RequestMember(int userId)
@@ -136,44 +128,13 @@ public class Trip
         Price = price;
     }
 
-    public void UpdateTimeline(int id, int newDay, string startingPoint, double[] fromCoords, string endPoint,
+    public void UpdateTimeline(int id, int newStartDay,int newEndDay, string startingPoint, double[] fromCoords, string endPoint,
         double[] toCoords, string note)
     {
-        var timeline = _timelines.FirstOrDefault(t => t.Id == id);
-        if (timeline == null) throw new Exception("Timeline not found");
+        var timeline = _timelines.FirstOrDefault(t => t.Id == id);   
+        timeline.Update(newStartDay,newEndDay, startingPoint, fromCoords, endPoint, toCoords, note);
 
-        int oldDay = timeline.Day;
 
-        int maxDay = _timelines.Max(t => t.Day);
-        if (newDay > maxDay) throw new Exception("Invalid day");
-
-        if (oldDay > newDay)
-        {
-            var toShift = _timelines
-                .Where(t => t.Day >= newDay && t.Day < oldDay && t.Id != timeline.Id)
-                .OrderByDescending(t => t.Day)
-                .ToList();
-
-            foreach (var t in toShift)
-                t.Update(t.Day + 1, t.StartingPoint, t.FromCoords, t.EndPoint, t.ToCoords, t.Note);
-        }
-        else if (oldDay < newDay)
-        {
-            var toShift = _timelines
-                .Where(t => t.Day > oldDay && t.Day <= newDay && t.Id != timeline.Id)
-                .OrderBy(t => t.Day)
-                .ToList();
-
-            foreach (var t in toShift)
-                t.Update(t.Day - 1, t.StartingPoint, t.FromCoords, t.EndPoint, t.ToCoords, t.Note);
-        }
-
-        Console.WriteLine($"${fromCoords[0]} {fromCoords[1]} -> ${toCoords[0]} {toCoords[1]} {note}");
-        timeline.Update(newDay, startingPoint, fromCoords, endPoint, toCoords, note);
-
-        var sorted = _timelines.OrderBy(t => t.Day).ToList();
-        _timelines.Clear();
-        _timelines.AddRange(sorted);
     }
 
     public void UpdateEmbedding(Vector embedding)
@@ -185,7 +146,7 @@ public class Trip
         List<String> tags, int maxParticipants, double price,int userId)
     {
         if(string.IsNullOrWhiteSpace(title)) throw new Exception("Title can not be empty");
-        if (startDate >= endDate) throw new Exception("Invalid Date");
+        if (startDate > endDate) throw new Exception("Invalid Date");
         if (startDate < DateTime.UtcNow) throw new Exception("Trip must be in future");
         var trip = new Trip(title, description, startDate, endDate, tags, maxParticipants, price);
         trip.AddOwner(userId);

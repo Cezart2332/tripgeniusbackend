@@ -73,7 +73,18 @@ public class AiChatHub : Hub
 
         var tripsContext = trips.Any()
             ? "\nRELEVANT TRIPS FROM THE APP:\n" + string.Join("\n", trips.Select(t =>
-                $"-Id:{t.Id} Title:{t.Title} Description:{t.Description}, Tags: {string.Join(",", t.Tags)}, Price: {t.Price} Timelines: {string.Join(",", t.Timelines.Select(tl => $"{tl.Day} {tl.StartingPoint} - {tl.EndPoint} Description: {tl.Note}"))}"))
+            {
+                var timelinesText = string.Join("\n  ", t.Timelines.Select(tl =>
+                {
+                    var activitiesText = tl.Activities.Any()
+                        ? string.Join(", ", tl.Activities.Select(a => $"{a.Name}({a.Type}, {a.Cost} RON)"))
+                        : "no activities";
+
+                    return $"Day {tl.StartDay}-{tl.EndDay}: {tl.StartingPoint} → {tl.EndPoint} | Note: {tl.Note} | Activities: {activitiesText}";
+                }));
+
+                return $"- Id:{t.Id} | {t.Title} | {t.Description} | Tags: {string.Join(",", t.Tags)} | Price: {t.Price}\n  {timelinesText}";
+            }))
             : "";
         
         var preferencesContext = "";

@@ -70,12 +70,21 @@ public class TripQueryService : ITripQueryService
             Timelines = t.Timelines.Select(timeline => new TripTimelineResponse
             {
                 Id = timeline.Id,
-                Day = timeline.Day,
+                StartDay = timeline.StartDay,
+                EndDay = timeline.EndDay,
                 StartingPoint = timeline.StartingPoint,
                 EndPoint = timeline.EndPoint,
                 FromCoords = timeline.FromCoords,
                 ToCoords = timeline.ToCoords,
-                Note = timeline.Note
+                Note = timeline.Note,
+                Activities = timeline.Activities.Select(a => new TripActivityRequest
+                {
+                    Name = a.Name,
+                    Description = a.Description,
+                    Cost = a.Cost,
+                    Link = a.Link,
+                    Type = a.Type
+                }).ToList()
             }).ToList(),
             Members = t.Members.Select(member => new TripMemberResponse
             {
@@ -100,12 +109,21 @@ public class TripQueryService : ITripQueryService
         return t => new TripTimelineResponse
         {
             Id = t.Id,
-            Day = t.Day,
+            StartDay = t.StartDay,
+            EndDay = t.EndDay,
             StartingPoint = t.StartingPoint,
             EndPoint = t.EndPoint,
             FromCoords = t.FromCoords,
             ToCoords = t.ToCoords,
-            Note = t.Note
+            Note = t.Note,
+            Activities = t.Activities.Select(a => new TripActivityRequest
+            {
+                Name = a.Name,
+                Description = a.Description,
+                Cost = a.Cost,
+                Link = a.Link,
+                Type = a.Type
+            }).ToList()
         };
     }
 }

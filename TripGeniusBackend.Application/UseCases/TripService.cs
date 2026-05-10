@@ -41,10 +41,17 @@ public class TripService : ITripService
         int userId = _jwtService.GetUserId();
         var trip = Trip.Create(tripRequest.Title, tripRequest.Description, tripRequest.StartingDate,
             tripRequest.EndingDate, tripRequest.Tags, tripRequest.MaxParticipants, tripRequest.Price, userId);
-        foreach (var timeline in tripRequest.Timelines)
+        foreach (var timelineRequest in tripRequest.Timelines)
         {
-            trip.AddTimeline(timeline.Day, timeline.StartingPoint, timeline.FromCoords, timeline.EndPoint, timeline.ToCoords, timeline.Note);
+            var timeline = trip.AddTimeline(timelineRequest.StartDay,timelineRequest.EndDay, timelineRequest.StartingPoint, timelineRequest.FromCoords, timelineRequest.EndPoint, timelineRequest.ToCoords, timelineRequest.Note);
+            foreach (var activity in timelineRequest.Activities)
+            {
+                TripActivity tripActivity = new TripActivity(activity.Name, activity.Description, activity.Link,
+                    activity.Cost, activity.Type);
+                timeline.AddActivity(tripActivity);
+            }
         }
+        
 
         await _tripRepository.CreateTrip(trip);
         await _tripRepository.SaveChanges();
@@ -60,9 +67,16 @@ public class TripService : ITripService
             var embeddingService = scope.ServiceProvider.GetRequiredService<IEmbeddingService>();
             var tripRepository = scope.ServiceProvider.GetRequiredService<ITripRepository>();
             string timelineString = "";
+            string activitesString = "Activites:";
             foreach (var timeline in trip.Timelines)
             {
-                timelineString += $"{timeline.Day}, {timeline.StartingPoint}, {timeline.FromCoords}, {timeline.EndPoint}, {timeline.ToCoords}, {timeline.Note}, ";
+                timelineString += $"{timeline.StartDay},{timeline.EndDay}, {timeline.StartingPoint}, {timeline.FromCoords}, {timeline.EndPoint}, {timeline.ToCoords}, {timeline.Note}, ";
+                
+                foreach (var activity in timeline.Activities)
+                {
+                    activitesString += $"{activity.Name}, {activity.Description}, {activity.Link}, {activity.Cost}, {activity.Type}, ";
+                }
+                timelineString += activitesString;
             }
 
             var text =
@@ -259,9 +273,16 @@ public class TripService : ITripService
             var embeddingService = scope.ServiceProvider.GetRequiredService<IEmbeddingService>();
             var tripRepository = scope.ServiceProvider.GetRequiredService<ITripRepository>();
             string timelineString = "";
+            string activitesString = "Activites:";
             foreach (var timeline in trip.Timelines)
             {
-                timelineString += $"{timeline.Day}, {timeline.StartingPoint}, {timeline.FromCoords}, {timeline.EndPoint}, {timeline.ToCoords}, {timeline.Note}, ";
+                timelineString += $"{timeline.StartDay},{timeline.EndDay}, {timeline.StartingPoint}, {timeline.FromCoords}, {timeline.EndPoint}, {timeline.ToCoords}, {timeline.Note}, ";
+                
+                foreach (var activity in timeline.Activities)
+                {
+                    activitesString += $"{activity.Name}, {activity.Description}, {activity.Link}, {activity.Cost}, {activity.Type}, ";
+                }
+                timelineString += activitesString;
             }
 
             var text =
@@ -294,7 +315,7 @@ public class TripService : ITripService
         if(trip == null) throw new KeyNotFoundException("Trip not found");
         bool isOwner = trip.Members.Any(m => m.UserId == userId && m.Role == Roles.Owner);
         if(!isOwner) throw new KeyNotFoundException("You are not authorized to view this");
-        trip.UpdateTimeline(updateTimelineRequest.Id, updateTimelineRequest.Day, updateTimelineRequest.StartingPoint, updateTimelineRequest.FromCoords, updateTimelineRequest.EndPoint, updateTimelineRequest.ToCoords, updateTimelineRequest.Note);
+        trip.UpdateTimeline(updateTimelineRequest.Id, updateTimelineRequest.StartDay,updateTimelineRequest.EndDay, updateTimelineRequest.StartingPoint, updateTimelineRequest.FromCoords, updateTimelineRequest.EndPoint, updateTimelineRequest.ToCoords, updateTimelineRequest.Note);
         await _tripRepository.SaveChanges();
         _ = Task.Run(async () =>
         {
@@ -302,9 +323,16 @@ public class TripService : ITripService
             var embeddingService = scope.ServiceProvider.GetRequiredService<IEmbeddingService>();
             var tripRepository = scope.ServiceProvider.GetRequiredService<ITripRepository>();
             string timelineString = "";
+            string activitesString = "Activites:";
             foreach (var timeline in trip.Timelines)
             {
-                timelineString += $"{timeline.Day}, {timeline.StartingPoint}, {timeline.FromCoords}, {timeline.EndPoint}, {timeline.ToCoords}, {timeline.Note}, ";
+                timelineString += $"{timeline.StartDay},{timeline.EndDay}, {timeline.StartingPoint}, {timeline.FromCoords}, {timeline.EndPoint}, {timeline.ToCoords}, {timeline.Note}, ";
+                
+                foreach (var activity in timeline.Activities)
+                {
+                    activitesString += $"{activity.Name}, {activity.Description}, {activity.Link}, {activity.Cost}, {activity.Type}, ";
+                }
+                timelineString += activitesString;
             }
 
             var text =
@@ -334,9 +362,16 @@ public class TripService : ITripService
             var embeddingService = scope.ServiceProvider.GetRequiredService<IEmbeddingService>();
             var tripRepository = scope.ServiceProvider.GetRequiredService<ITripRepository>();
             string timelineString = "";
+            string activitesString = "Activites:";
             foreach (var timeline in trip.Timelines)
             {
-                timelineString += $"{timeline.Day}, {timeline.StartingPoint}, {timeline.FromCoords}, {timeline.EndPoint}, {timeline.ToCoords}, {timeline.Note}, ";
+                timelineString += $"{timeline.StartDay},{timeline.EndDay}, {timeline.StartingPoint}, {timeline.FromCoords}, {timeline.EndPoint}, {timeline.ToCoords}, {timeline.Note}, ";
+                
+                foreach (var activity in timeline.Activities)
+                {
+                    activitesString += $"{activity.Name}, {activity.Description}, {activity.Link}, {activity.Cost}, {activity.Type}, ";
+                }
+                timelineString += activitesString;
             }
 
             var text =
@@ -358,7 +393,7 @@ public class TripService : ITripService
         if(trip == null) throw new KeyNotFoundException("Trip not found");
         bool isOwner = trip.Members.Any(m => m.UserId == userId && m.Role == Roles.Owner);
         if(!isOwner) throw new UnauthorizedAccessException("You are not authorized to do this");
-        trip.AddTimeline(updateTimelineRequest.Day, updateTimelineRequest.StartingPoint, updateTimelineRequest.FromCoords, updateTimelineRequest.EndPoint, updateTimelineRequest.ToCoords, updateTimelineRequest.Note);
+        trip.AddTimeline(updateTimelineRequest.StartDay,updateTimelineRequest.EndDay, updateTimelineRequest.StartingPoint, updateTimelineRequest.FromCoords, updateTimelineRequest.EndPoint, updateTimelineRequest.ToCoords, updateTimelineRequest.Note);
         await _tripRepository.SaveChanges();
         _ = Task.Run(async () =>
         {
@@ -366,9 +401,16 @@ public class TripService : ITripService
             var embeddingService = scope.ServiceProvider.GetRequiredService<IEmbeddingService>();
             var tripRepository = scope.ServiceProvider.GetRequiredService<ITripRepository>();
             string timelineString = "";
+            string activitesString = "Activites:";
             foreach (var timeline in trip.Timelines)
             {
-                timelineString += $"{timeline.Day}, {timeline.StartingPoint}, {timeline.FromCoords}, {timeline.EndPoint}, {timeline.ToCoords}, {timeline.Note}, ";
+                timelineString += $"{timeline.StartDay},{timeline.EndDay}, {timeline.StartingPoint}, {timeline.FromCoords}, {timeline.EndPoint}, {timeline.ToCoords}, {timeline.Note}, ";
+                
+                foreach (var activity in timeline.Activities)
+                {
+                    activitesString += $"{activity.Name}, {activity.Description}, {activity.Link}, {activity.Cost}, {activity.Type}, ";
+                }
+                timelineString += activitesString;
             }
 
             var text =
