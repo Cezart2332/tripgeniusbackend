@@ -35,6 +35,7 @@ public class AiService : IAiService
 
   INSTRUCTIONS (THINKING & PLANNING):
   1. REAL-TIME VERIFICATION (CRITICAL): You MUST search the web to verify EVERY piece of information before suggesting it. Check if places are still open in {{DateTime.UtcNow.Year}}, verify current prices, opening hours, and realistic travel times. Do NOT rely solely on your internal or outdated knowledge.
+     - REPETITIVE VERIFICATION: You MUST perform fresh searches for every new location, hotel, or activity. Do not assume previous internal knowledge is correct. Verify multiple options before choosing.
   2. Plan a logical multi-day route from {{p.StartingPoint}}. Ensure travel times are realistic.
   3. Think out loud about your choices (this helps the stream work correctly and shows the user your thought process).
 
@@ -116,6 +117,7 @@ private string SystemPrompt => $$"""
        
     2. REAL-TIME VERIFICATION & WEB SEARCH (Fallback & Real-World Info): Explicitly use your web search/fetch tools when the user asks for real-world data, tourist attractions, or accommodations not in your context.
        - If the users ask anything outside the application, use the web_search and web_fetch tools, don't invent anything
+       - REPETITIVE VERIFICATION: Even if you are in the middle of a conversation, you MUST perform a NEW web search for every new location, hotel, or activity you suggest. Do not rely on your internal knowledge or previous turns in the conversation. If the user asks for more details, search again to get those specific details.
        - CRITICAL (VERIFY EVERYTHING): You MUST verify EVERY piece of real-world information before presenting it to the user. This includes checking if places are still open in {{DateTime.UtcNow.Year}}, validating current ticket/food prices, confirming opening hours, and finding accurate travel times, distances, or transport routes. Do NOT rely on outdated internal knowledge or estimates.
        
        If you recommend specific places, you MUST append actionable links at the end of your response in this exact format:
@@ -134,7 +136,7 @@ private string SystemPrompt => $$"""
 
     FACTS & STRICT LIMITATIONS: 
     - Never invent locations, prices, distances, travel times, dates, or URLs (except the Maps fallback).
-    - Rely ONLY on the internal app context provided or verified, current data retrieved via your web search tools. If both fail to provide an answer, politely say you don't have that information.
+    - Rely ONLY on the internal app context provided or FRESH data retrieved via your web search tools for each specific turn. Do not assume information is correct just because it was mentioned earlier if it wasn't explicitly verified with a tool in the current or most recent turn. If both fail to provide an answer, politely say you don't have that information.
     - VARIETY: Never suggest the same locations as in previous messages. Rotate between cultural, natural, and culinary recommendations unless specified.
 
     STYLE: Short paragraphs over bullets. Bullets only for lists/steps. 2-3 options max. No large tables. Match the user's language exactly. You may write slightly longer responses to accommodate your "thinking out loud" process, but keep the final recommendations concise.
@@ -152,12 +154,7 @@ private string SystemPrompt => $$"""
 
     public async Task AskAsync(List<AiChatResponse> lastMessages, string prompt, string memoryContext, string relevantTrips, string userPreferences, Func<string, Task> onChunk)
     {
-        var messages = lastMessages.Select(m => new { role = m.Role, content = m.Message }).ToList<object>();
-
-        var fullMessages = new List<object>{};
-        fullMessages.AddRange(messages);
-
-      
+        var fullMessages = new List<object> { new { role = "system", content = SystemPrompt } };
 
         fullMessages.Add(new
         {
@@ -167,7 +164,8 @@ private string SystemPrompt => $$"""
                       + userPreferences + "\n"
                       + memoryContext
         });
-        fullMessages.Add(new { role = "system", content = SystemPrompt });
+
+        fullMessages.AddRange(lastMessages.Select(m => new { role = m.Role, content = m.Message }));
         fullMessages.Add(new { role = "user", content = prompt });
 
         int maxIterations = 4;
@@ -257,7 +255,7 @@ private string SystemPrompt => $$"""
                 if (iterText.Length > 0)
                     fullMessages.Add(new { role = "assistant", content = iterText });
 
-                fullMessages.Add(new { role = "user", content = "Continue answering based on the tools results." });
+                fullMessages.Add(new { role = "user", content = "Continue answering based on the tools results. Remember to use web_search or web_fetch again if you need more details to avoid hallucinating." });
                 continue;
             }
 
@@ -378,7 +376,7 @@ public async Task GenerateTripAsync(AiTripPlanner aiTripPlanner)
                 messages.Add(new { role = "assistant", content = iterText });
 
             // Adaugi un mesaj user care îl împinge să continue
-            messages.Add(new { role = "user", content = "Continue planning and generate the final JSON." });
+            messages.Add(new { role = "user", content = "Continue planning and generate the final JSON. Remember to use web_search or web_fetch again for any missing details or verification." });
             continue;
         }
 
