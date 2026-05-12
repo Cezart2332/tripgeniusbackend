@@ -207,7 +207,7 @@ private string SystemPrompt => $$"""
     fullMessages.AddRange(lastMessages.Select(m => new { role = m.Role, content = m.Message }));
 
     // Wrap the user prompt with a mandatory search reminder
-    var wrappedPrompt = $"[MANDATORY INSTRUCTION: Before writing anything, you MUST call web_search now for any real-world information in this message. Do NOT use memory or previous search results.]\n\n{prompt}";
+    var wrappedPrompt = $"[MANDATORY INSTRUCTION: Before writing anything, you MUST call web_search and web_fetch now for any real-world information in this message. Do NOT use memory or previous search results.]\n\n{prompt}";
     fullMessages.Add(new { role = "user", content = wrappedPrompt });
 
     int maxIterations = 6;

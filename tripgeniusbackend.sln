@@ -1,0 +1,42 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TripGeniusBackend.API", "TripGeniusBackend.API\TripGeniusBackend.API.csproj", "{21BD5D32-86D5-3AA7-3135-8B580DEC0A9C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TripGeniusBackend.Application", "TripGeniusBackend.Application\TripGeniusBackend.Application.csproj", "{2D6F8A4B-A79C-A647-2C9C-766681B9DAC3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TripGeniusBackend.Domain", "TripGeniusBackend.Domain\TripGeniusBackend.Domain.csproj", "{3A53FAC8-CD58-B428-28BB-215442D3CC84}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TripGeniusBackend.Infrastructure", "TripGeniusBackend.Infrastructure\TripGeniusBackend.Infrastructure.csproj", "{234E0F34-E9EB-DB5C-6FEF-6352E7EBDC60}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{21BD5D32-86D5-3AA7-3135-8B580DEC0A9C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{21BD5D32-86D5-3AA7-3135-8B580DEC0A9C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{21BD5D32-86D5-3AA7-3135-8B580DEC0A9C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{21BD5D32-86D5-3AA7-3135-8B580DEC0A9C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2D6F8A4B-A79C-A647-2C9C-766681B9DAC3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2D6F8A4B-A79C-A647-2C9C-766681B9DAC3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2D6F8A4B-A79C-A647-2C9C-766681B9DAC3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2D6F8A4B-A79C-A647-2C9C-766681B9DAC3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3A53FAC8-CD58-B428-28BB-215442D3CC84}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3A53FAC8-CD58-B428-28BB-215442D3CC84}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3A53FAC8-CD58-B428-28BB-215442D3CC84}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3A53FAC8-CD58-B428-28BB-215442D3CC84}.Release|Any CPU.Build.0 = Release|Any CPU
+		{234E0F34-E9EB-DB5C-6FEF-6352E7EBDC60}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{234E0F34-E9EB-DB5C-6FEF-6352E7EBDC60}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{234E0F34-E9EB-DB5C-6FEF-6352E7EBDC60}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{234E0F34-E9EB-DB5C-6FEF-6352E7EBDC60}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {D0ED85EA-0673-4283-8B43-C8471534EA7E}
+	EndGlobalSection
+EndGlobal
