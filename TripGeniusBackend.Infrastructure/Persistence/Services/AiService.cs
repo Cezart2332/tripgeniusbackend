@@ -180,7 +180,7 @@ public class AiService : IAiService
         
         var request = new HttpRequestMessage(HttpMethod.Post, "https://openrouter.ai/api/v1/chat/completions");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
-        request.Headers.Add("HTTP-Referer", "https://tripgenius.online"); // Poți ajusta cu URL-ul aplicației tale
+        request.Headers.Add("HTTP-Referer", "https://tripgenius.online");  
         request.Headers.Add("X-Title", "TripGenius");
         
         request.Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");

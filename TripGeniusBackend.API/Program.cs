@@ -108,6 +108,7 @@ builder.Services.AddScoped<ITokenHasher, TokenHasher>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddSingleton<INotificationService, NotificationService>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
+builder.Services.AddScoped<IPdfService, PdfService>();
 builder.Services.AddScoped<IFileUploader, FileUploader>();
 builder.Services.AddSingleton<IUserIdProvider, UserIdProvider>();
 

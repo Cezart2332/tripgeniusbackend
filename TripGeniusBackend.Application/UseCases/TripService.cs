@@ -21,9 +21,9 @@ public class TripService : ITripService
     private readonly IMessageQueryService _messageQueryService;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly INotificationService _notificationService;
+    private readonly IPdfService _pdfService;
     
-
-    public TripService(ITripRepository tripRepository,ITripQueryService tripQueryService, IUserRepository userRepository, IJwtService jwtService, IFileUploader fileUploader, IMessageQueryService messageQueryService,IServiceScopeFactory scopeFactory, INotificationService notificationService)
+    public TripService(ITripRepository tripRepository,ITripQueryService tripQueryService, IUserRepository userRepository, IJwtService jwtService, IFileUploader fileUploader, IMessageQueryService messageQueryService,IServiceScopeFactory scopeFactory, INotificationService notificationService, IPdfService pdfService)
     {
         _tripRepository = tripRepository;
         _tripQueryService = tripQueryService;
@@ -33,6 +33,7 @@ public class TripService : ITripService
         _messageQueryService = messageQueryService;
         _scopeFactory = scopeFactory;
         _notificationService = notificationService;
+        _pdfService = pdfService;
     }
 
     public async Task CreateTrip(TripRequest tripRequest)
@@ -426,4 +427,12 @@ public class TripService : ITripService
     {
         return await _messageQueryService.GetMessages(tripId); 
     }
+
+    public async Task<byte[]> ExportCosts(int tripId)
+    {
+        var trip = await _tripRepository.GetTripById(tripId);
+        if (trip == null) throw new KeyNotFoundException("Trip not found");
+        return _pdfService.GenerateCostsPdf(trip);
+    }
+    
 }

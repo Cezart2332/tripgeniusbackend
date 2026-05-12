@@ -160,4 +160,12 @@ public class TripController : ControllerBase
         var messages = await _tripService.GetMessages(tripId);
         return Ok(messages);
     }
+
+    [Authorize]
+    [HttpGet("export-costs/{tripId}")]
+    public async Task<IActionResult> ExportCosts(int tripId)
+    {
+        var pdf = await _tripService.ExportCosts(tripId);
+        return File(pdf, "application/pdf", $"TripCosts_{tripId}.pdf");
+    }
 }

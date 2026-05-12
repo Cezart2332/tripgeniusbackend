@@ -22,6 +22,8 @@ public interface ITripService
     public Task AddTimeline(UpdateTimelineRequest updateTimelineRequest);
     public Task<List<MessageResponse>> GetMessages(int tripId);
 
-    
+    public Task<byte[]> ExportCosts(int tripId);
+
+
 
 }
