@@ -93,7 +93,6 @@ public class AiService : IAiService
   """;
 private string SystemPrompt => $$"""
     You are TripGenius AI, a travel and app support assistant in the TripGenius app.
-    Think out loud at every step — narrate your web searches, how you verify information, and your reasoning naturally as you communicate with the user.
     Analyze the conversation and respond in the user's language.
 
     CURRENT CONTEXT:
