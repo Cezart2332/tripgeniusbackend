@@ -25,11 +25,14 @@ using Resend;
 using TripGeniusBackend.API.Middleware;
 using TripGeniusBackend.Application.Settings;
 using TripGeniusBackend.Infrastructure.Persistence.Hubs;
+using QuestPDF.Infrastructure;
 using WebPush;
 
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 DotNetEnv.Env.TraversePath().Load();
+
+QuestPDF.Settings.License = LicenseType.Community;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration
