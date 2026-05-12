@@ -153,11 +153,11 @@ private string SystemPrompt => $$"""
 
     public async Task AskAsync(List<AiChatResponse> lastMessages, string prompt, string memoryContext, string relevantTrips, string userPreferences, Func<string, Task> onChunk)
     {
-        var messages = lastMessages.Select(m => new { role = m.Role, content = m.Message }).ToList();
-        
+        var messages = lastMessages.Select(m => new { role = m.Role, content = m.Message }).ToList<object>();
+
         var fullMessages = new List<object> { new { role = "system", content = SystemPrompt } };
         fullMessages.AddRange(messages);
-        
+
         fullMessages.Add(new
         {
             role = "system",
@@ -167,63 +167,106 @@ private string SystemPrompt => $$"""
                       + memoryContext
         });
         fullMessages.Add(new { role = "user", content = prompt });
-        
-        var body = new
-        {
-            model = "deepseek/deepseek-v4-flash",
-            stream = true,
-            messages = fullMessages,
-            tools = new object[]
-            {
-                new { type = "openrouter:web_search" },
-                new { type = "openrouter:web_fetch" }
-            }
-        };
-        
-        var request = new HttpRequestMessage(HttpMethod.Post, "https://openrouter.ai/api/v1/chat/completions");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
-        request.Headers.Add("HTTP-Referer", "https://tripgenius.online");  
-        request.Headers.Add("X-Title", "TripGenius");
-        
-        request.Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
-        
-        var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
-        response.EnsureSuccessStatusCode();
-        
-        using var stream = await response.Content.ReadAsStreamAsync();
-        using var reader = new StreamReader(stream);
 
-        while (!reader.EndOfStream)
-        {
-            var line = await reader.ReadLineAsync();
-            
-            if (string.IsNullOrEmpty(line) || !line.StartsWith("data:")) 
-                continue;
-                
-            var json = line[5..].Trim();
-            if (json == "[DONE]") 
-                break;
+        int maxIterations = 4;
 
-            try
+        for (int i = 0; i < maxIterations; i++)
+        {
+            var body = new
             {
-                using var doc = JsonDocument.Parse(json);
-                if (doc.RootElement.TryGetProperty("choices", out var choices) && choices.GetArrayLength() > 0)
+                model = "deepseek/deepseek-v4-flash",
+                stream = true,
+                messages = fullMessages,
+                tools = new object[]
                 {
-                    var delta = choices[0].GetProperty("delta");
-                    if (delta.TryGetProperty("content", out var contentEl))
+                    new { type = "openrouter:web_search" },
+                    new { type = "openrouter:web_fetch" }
+                }
+            };
+
+            var request = new HttpRequestMessage(HttpMethod.Post, "https://openrouter.ai/api/v1/chat/completions");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+            request.Headers.Add("HTTP-Referer", "https://tripgenius.online");
+            request.Headers.Add("X-Title", "TripGenius");
+
+            request.Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
+
+            var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+            response.EnsureSuccessStatusCode();
+
+            using var stream = await response.Content.ReadAsStreamAsync();
+            using var reader = new StreamReader(stream);
+
+            var iterationText = new StringBuilder();
+            string? finishReason = null;
+            bool hasToolCalls = false;
+
+            while (!reader.EndOfStream)
+            {
+                var line = await reader.ReadLineAsync();
+
+                if (string.IsNullOrEmpty(line) || !line.StartsWith("data:"))
+                    continue;
+
+                var json = line[5..].Trim();
+                if (json == "[DONE]")
+                    break;
+
+                try
+                {
+                    using var doc = JsonDocument.Parse(json);
+                    if (doc.RootElement.TryGetProperty("choices", out var choices) && choices.GetArrayLength() > 0)
                     {
-                        var content = contentEl.GetString();
-                        if (!string.IsNullOrEmpty(content))
+                        var choice = choices[0];
+                        var delta = choice.GetProperty("delta");
+
+                        if (choice.TryGetProperty("finish_reason", out var fr) && fr.ValueKind != JsonValueKind.Null)
+                            finishReason = fr.GetString();
+
+                        if (delta.TryGetProperty("content", out var contentEl) && contentEl.ValueKind != JsonValueKind.Null)
                         {
-                            await onChunk(content);
+                            var content = contentEl.GetString();
+                            if (!string.IsNullOrEmpty(content))
+                            {
+                                iterationText.Append(content);
+                                await onChunk(content);
+                            }
                         }
+
+                        if (delta.TryGetProperty("tool_calls", out _))
+                            hasToolCalls = true;
                     }
                 }
+                catch (JsonException)
+                {
+                    continue;
+                }
             }
-            catch (JsonException)
+
+            var iterText = iterationText.ToString();
+
+            if (finishReason == "stop" || finishReason == "end_turn")
             {
-                // Ignorăm erorile de parsare JSON pentru eventualele chunk-uri corupte sau neașteptate
+                break;
+            }
+
+            if (hasToolCalls || finishReason == "tool_calls")
+            {
+                if (iterText.Length > 0)
+                    fullMessages.Add(new { role = "assistant", content = iterText });
+
+                fullMessages.Add(new { role = "user", content = "Continue answering based on the tools results." });
                 continue;
+            }
+
+            if (iterText.Length > 0)
+            {
+                fullMessages.Add(new { role = "assistant", content = iterText });
+                fullMessages.Add(new { role = "user", content = "Continue." });
+            }
+            else
+            {
+                break;
             }
         }
     }
