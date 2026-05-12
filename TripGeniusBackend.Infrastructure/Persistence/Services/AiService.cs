@@ -158,7 +158,7 @@ private string SystemPrompt => $$"""
         fullMessages.AddRange(messages);
 
       
-        fullMessages.Add(new { role = "system", content = SystemPrompt });
+
         fullMessages.Add(new
         {
             role = "system",
@@ -167,6 +167,7 @@ private string SystemPrompt => $$"""
                       + userPreferences + "\n"
                       + memoryContext
         });
+        fullMessages.Add(new { role = "system", content = SystemPrompt });
         fullMessages.Add(new { role = "user", content = prompt });
 
         int maxIterations = 4;
