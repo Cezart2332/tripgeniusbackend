@@ -42,11 +42,13 @@ public class AiService : IAiService
   CRITICAL INSTRUCTIONS FOR LINKS (MANDATORY):
   1. DEEP SEARCH FOR REAL LINKS: For every accommodation, restaurant, or attraction, you MUST perform a specific search to find its official website or its direct page on major platforms (Booking.com, Airbnb, TripAdvisor, Yelp).
   2. PREFERENCE ORDER: 
-     - Priority 1: Direct link to the specific property on Booking.com/Airbnb (for hotels) or official website (for attractions).
-     - Priority 2: Direct reservation/info page on a reputable travel site.
-     - LAST RESORT ONLY: Google Maps search link. Use this ONLY if after multiple searches you cannot find a direct functional URL.
-  3. NO HALLUCINATIONS: Do not invent URLs. If you provide a link, it must be one you actually found via web search tools. If tools return no data, use your internal knowledge but do not fake URLs.
-  4. GOOGLE MAPS FORMAT: If (and only if) you must use a fallback, the format is: https://www.google.com/maps/search/?api=1&query=... (where Query is 'Name+City'). Do not append random numbers at the end.
+     - Priority 1: Official website of the hotel, restaurant, or attraction.
+     - Priority 2: Direct link to the specific property on Booking.com/Airbnb (for hotels).
+     - Priority 3: Direct reservation/info page on a reputable travel site (TripAdvisor, Yelp, etc.).
+     - LAST RESORT ONLY: Google Maps search link. Use this ONLY if after multiple deep searches you cannot find a direct functional URL.
+  3. AVOID GOOGLE MAPS: Do not settle for a Google Maps link if an official site exists. If your search returns a Maps link, perform a NEW search specifically for "[Place Name] official website".
+  4. NO HALLUCINATIONS: Do not invent URLs. If you provide a link, it must be one you actually found via web search tools. If tools return no data, use your internal knowledge but do not fake URLs.
+  5. GOOGLE MAPS FORMAT: If (and only if) you must use a fallback, the format is: https://www.google.com/maps/search/?api=1&query=... (where Query is 'Name+City'). Do not append random numbers at the end.
 
   OTHER RULES:
   - COMPLETENESS: Generate all {{p.DurationDays}} days with 2-3 activities per day.
@@ -130,15 +132,18 @@ private string SystemPrompt => $$"""
          validate current prices, opening hours, and accurate travel times before stating them.
 
        ANTI-HALLUCINATION & LINK VERIFICATION RULES (CRITICAL):
+       - PREFERENCE ORDER FOR LINKS:
+         1. Official website of the place (hotel, restaurant, attraction).
+         2. Direct booking/info page on major platforms (Booking.com, Airbnb, TripAdvisor, Yelp).
+         3. Google Maps fallback (ONLY if 1 and 2 are absolutely unavailable after deep searching).
+       - TRY HARDER: If you find a Google Maps link, do not stop. Search again specifically for the official website or a direct booking page.
        - WARNING: URLs for platforms like Booking.com, Airbnb, and Expedia contain complex IDs.
          You are STRICTLY FORBIDDEN from guessing or constructing these URLs manually.
          ONLY use EXACT URLs extracted directly from your web_search tool results.
        - URL VALIDATION VIA FETCH: Before including any link, you MUST use web_fetch to test the URL.
          If the page returns an error or a 404, you MUST reject that link and find another one.
-       - GOOGLE MAPS FALLBACK: If you cannot find a direct, working URL (or if it fails your web_fetch test),
-         you MUST use a Google Maps link instead:
-         `https://www.google.com/maps/search/?api=1&query=Name+Of+Place+City` (replace spaces with +).
-         This is the ONLY URL you are allowed to construct yourself.
+       - GOOGLE MAPS FALLBACK: Use this ONLY as a last resort. Do not settle for a Maps link if an official site exists.
+         Format: `https://www.google.com/maps/search/?api=1&query=Name+Of+Place+City`
        - Reject any URL containing generic search parameters (e.g., /searchresults, ?city=).
        - DO NOT include general informational sources like Wikipedia or travel blogs.
 
