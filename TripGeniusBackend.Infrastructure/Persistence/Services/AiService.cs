@@ -182,146 +182,146 @@ private string SystemPrompt => $$"""
         _tripService = tripService;
     }
 
- public async Task AskAsync(
-    List<AiChatResponse> lastMessages,
-    string prompt,
-    string memoryContext,
-    string relevantTrips,
-    string userPreferences,
-    Func<string, Task> onChunk)
-{
-    var fullMessages = new List<object>
+    public async Task AskAsync(
+        List<AiChatResponse> lastMessages,
+        string prompt,
+        string memoryContext,
+        string relevantTrips,
+        string userPreferences,
+        Func<string, Task> onChunk)
     {
-        new { role = "system", content = SystemPrompt }
-    };
-
-    fullMessages.Add(new
-    {
-        role = "system",
-        content = "IMPORTANT CONTEXT FOR THIS USER:\n"
-                  + (string.IsNullOrEmpty(relevantTrips) ? "" : $"RELEVANT TRIPS FROM THE APP:\n{relevantTrips}\n\n")
-                  + userPreferences + "\n"
-                  + memoryContext
-    });
-
-    fullMessages.AddRange(lastMessages.Select(m => new { role = m.Role, content = m.Message }));
-
-    // Wrap the user prompt with a mandatory search reminder
-    var wrappedPrompt = $"[MANDATORY INSTRUCTION: Before writing anything, you MUST call web_search and web_fetch now for any real-world information in this message. Do NOT use memory or previous search results.]\n\n{prompt}";
-    fullMessages.Add(new { role = "user", content = wrappedPrompt });
-
-    int maxIterations = 6;
-    bool firstIteration = true;
-    bool anyToolCallsUsed = false;
-
-    for (int i = 0; i < maxIterations; i++)
-    {
-        var body = new
+        var fullMessages = new List<object>
         {
-            model = "deepseek/deepseek-v4-flash",
-            stream = true,
-            messages = fullMessages,
-            tools = new object[]
+            new
             {
-                new { type = "openrouter:web_search" },
-                new { type = "openrouter:web_fetch" }
+                role = "system",
+                content = SystemPrompt + "\n\nIMPORTANT CONTEXT FOR THIS USER:\n"
+                                        + (string.IsNullOrEmpty(relevantTrips) ? "" : $"RELEVANT TRIPS FROM THE APP:\n{relevantTrips}\n\n")
+                                        + userPreferences + "\n"
+                                        + memoryContext
             }
         };
 
-        var request = new HttpRequestMessage(HttpMethod.Post, "https://openrouter.ai/api/v1/chat/completions");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
-        request.Headers.Add("HTTP-Referer", "https://tripgenius.online");
-        request.Headers.Add("X-Title", "TripGenius");
-        request.Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
+        fullMessages.AddRange(lastMessages.Select(m => new { role = m.Role.ToLower(), content = m.Message }));
 
-        var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
-        response.EnsureSuccessStatusCode();
+        // Wrap the user prompt with a mandatory search reminder
+        var wrappedPrompt = $"[MANDATORY INSTRUCTION: Before writing anything, you MUST call web_search and web_fetch now for any real-world information in this message. Do NOT use memory or previous search results.]\n\n{prompt}";
+        fullMessages.Add(new { role = "user", content = wrappedPrompt });
 
-        using var stream = await response.Content.ReadAsStreamAsync();
-        using var reader = new StreamReader(stream);
+        int maxIterations = 6;
 
-        var iterationText = new StringBuilder();
-        string? finishReason = null;
-        bool hasToolCalls = false;
-
-        while (!reader.EndOfStream)
+        for (int i = 0; i < maxIterations; i++)
         {
-            var line = await reader.ReadLineAsync();
+            Console.WriteLine($"[DEBUG] AskAsync Iteration {i + 1}...");
 
-            if (string.IsNullOrEmpty(line) || !line.StartsWith("data:"))
-                continue;
-
-            var json = line[5..].Trim();
-            if (json == "[DONE]")
-                break;
-
-            try
+            var body = new
             {
-                using var doc = JsonDocument.Parse(json);
-                if (doc.RootElement.TryGetProperty("choices", out var choices) && choices.GetArrayLength() > 0)
+                model = "deepseek/deepseek-v4-flash",
+                stream = true,
+                messages = fullMessages,
+                tools = new object[]
                 {
-                    var choice = choices[0];
-                    var delta = choice.GetProperty("delta");
+                    new { type = "openrouter:web_search" },
+                    new { type = "openrouter:web_fetch" }
+                }
+            };
 
-                    if (choice.TryGetProperty("finish_reason", out var fr) && fr.ValueKind != JsonValueKind.Null)
-                        finishReason = fr.GetString();
+            var request = new HttpRequestMessage(HttpMethod.Post, "https://openrouter.ai/api/v1/chat/completions");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+            request.Headers.Add("HTTP-Referer", "https://tripgenius.online");
+            request.Headers.Add("X-Title", "TripGenius");
+            request.Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
 
-                    if (delta.TryGetProperty("content", out var contentEl) && contentEl.ValueKind != JsonValueKind.Null)
+            var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+            response.EnsureSuccessStatusCode();
+
+            using var stream = await response.Content.ReadAsStreamAsync();
+            using var reader = new StreamReader(stream);
+
+            var iterationText = new StringBuilder();
+            string? finishReason = null;
+            bool hasToolCalls = false;
+
+            while (!reader.EndOfStream)
+            {
+                var line = await reader.ReadLineAsync();
+
+                if (string.IsNullOrEmpty(line) || !line.StartsWith("data:"))
+                    continue;
+
+                var json = line[5..].Trim();
+                if (json == "[DONE]")
+                    break;
+
+                try
+                {
+                    using var doc = JsonDocument.Parse(json);
+                    if (doc.RootElement.TryGetProperty("choices", out var choices) && choices.GetArrayLength() > 0)
                     {
-                        var content = contentEl.GetString();
-                        if (!string.IsNullOrEmpty(content))
-                        {
-                            iterationText.Append(content);
-                            await onChunk(content);
-                        }
-                    }
+                        var choice = choices[0];
+                        var delta = choice.GetProperty("delta");
 
-                    if (delta.TryGetProperty("tool_calls", out _))
-                        hasToolCalls = true;
+                        if (choice.TryGetProperty("finish_reason", out var fr) && fr.ValueKind != JsonValueKind.Null)
+                            finishReason = fr.GetString();
+
+                        // Accumulate normal content
+                        if (delta.TryGetProperty("content", out var contentEl) && contentEl.ValueKind != JsonValueKind.Null)
+                        {
+                            var content = contentEl.GetString();
+                            if (!string.IsNullOrEmpty(content))
+                            {
+                                iterationText.Append(content);
+                                await onChunk(content);
+                            }
+                        }
+
+                        // Accumulate reasoning content (thinking)
+                        if (delta.TryGetProperty("reasoning_content", out var reasoningEl) && reasoningEl.ValueKind != JsonValueKind.Null)
+                        {
+                            var reasoning = reasoningEl.GetString();
+                            if (!string.IsNullOrEmpty(reasoning))
+                            {
+                                iterationText.Append(reasoning);
+                                await onChunk(reasoning);
+                            }
+                        }
+
+                        if (delta.TryGetProperty("tool_calls", out _))
+                            hasToolCalls = true;
+                    }
+                }
+                catch (JsonException)
+                {
+                    continue;
                 }
             }
-            catch (JsonException)
+
+            var iterText = iterationText.ToString();
+
+            if (hasToolCalls || finishReason == "tool_calls")
             {
+                Console.WriteLine($"[DEBUG] Tool calls detected in iteration {i + 1}. Nudging model...");
+
+                // ALWAYS add an assistant message to keep the role sequence valid (User -> Assistant -> User)
+                // Even if iterText is empty, we must provide an assistant message if there were tool calls.
+                fullMessages.Add(new { role = "assistant", content = iterText.Length > 0 ? iterText : "Thinking..." });
+
+                fullMessages.Add(new
+                {
+                    role = "user",
+                    content = "Good. Now provide your final answer using ONLY the data returned by the tools above. " +
+                              "If you need details about any specific place not yet searched, call web_search or web_fetch again BEFORE writing about it. " +
+                              "Do NOT invent or assume any information not returned by the tools."
+                });
+
                 continue;
             }
-        }
-
-        var iterText = iterationText.ToString();
-
-        if (hasToolCalls || finishReason == "tool_calls")
-        {
-            anyToolCallsUsed = true;
-
-            if (iterText.Length > 0)
-                fullMessages.Add(new { role = "assistant", content = iterText });
-
-            fullMessages.Add(new
+            else
             {
-                role = "user",
-                content = "Good. Now provide your final answer using ONLY the data returned by the tools above. " +
-                          "If you need details about any specific place not yet searched, call web_search or web_fetch again BEFORE writing about it. " +
-                          "Do NOT invent or assume any information not returned by the tools."
-            });
-
-            firstIteration = false;
-            continue;
-        }
-
-        
-
-        // Model produced text but didn't finish cleanly — ask it to continue
-        if (iterText.Length > 0)
-        {
-            fullMessages.Add(new { role = "assistant", content = iterText });
-            fullMessages.Add(new { role = "user", content = "Continue." });
-            firstIteration = false;
-        }
-        else
-        {
-            break;
+                break;
+            }
         }
     }
-}
 
 public async Task GenerateTripAsync(AiTripPlanner aiTripPlanner)
 {
@@ -389,7 +389,7 @@ public async Task GenerateTripAsync(AiTripPlanner aiTripPlanner)
                 if (choice.TryGetProperty("finish_reason", out var fr) && fr.ValueKind != JsonValueKind.Null)
                     finishReason = fr.GetString();
 
-                // Acumulează text
+                // Acumulează text normal
                 if (delta.TryGetProperty("content", out var contentEl) && contentEl.ValueKind != JsonValueKind.Null)
                 {
                     var chunk = contentEl.GetString();
@@ -397,6 +397,17 @@ public async Task GenerateTripAsync(AiTripPlanner aiTripPlanner)
                     {
                         iterationText.Append(chunk);
                         Console.Write(chunk);
+                    }
+                }
+
+                // Acumulează reasoning (thinking)
+                if (delta.TryGetProperty("reasoning_content", out var reasoningEl) && reasoningEl.ValueKind != JsonValueKind.Null)
+                {
+                    var reasoning = reasoningEl.GetString();
+                    if (!string.IsNullOrEmpty(reasoning))
+                    {
+                        iterationText.Append(reasoning);
+                        Console.Write(reasoning);
                     }
                 }
 
@@ -423,9 +434,9 @@ public async Task GenerateTripAsync(AiTripPlanner aiTripPlanner)
         {
             Console.WriteLine("[DEBUG] Tool calls detectate, continui...");
 
-            // Adaugi ce a generat până acum ca mesaj assistant
-            if (iterText.Length > 0)
-                messages.Add(new { role = "assistant", content = iterText });
+            // ALWAYS add an assistant message to keep the role sequence valid (User -> Assistant -> User)
+            // Even if iterText is empty, we must provide an assistant message if there were tool calls.
+            messages.Add(new { role = "assistant", content = iterText.Length > 0 ? iterText : "Thinking..." });
 
             // Adaugi un mesaj user care îl împinge să continue
             messages.Add(new { role = "user", content = "Continue planning and generate the final JSON. Remember to use web_search or web_fetch again for any missing details or verification." });
