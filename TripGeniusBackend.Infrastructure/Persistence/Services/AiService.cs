@@ -48,7 +48,8 @@ public class AiService : IAiService
      - LAST RESORT ONLY: Google Maps search link. Use this ONLY if after multiple deep searches you cannot find a direct functional URL.
   3. AVOID GOOGLE MAPS: Do not settle for a Google Maps link if an official site exists. If your search returns a Maps link, perform a NEW search specifically for "[Place Name] official website".
   4. NO HALLUCINATIONS: Do not invent URLs. If you provide a link, it must be one you actually found via web search tools. If tools return no data, use your internal knowledge but do not fake URLs.
-  5. GOOGLE MAPS FORMAT: If (and only if) you must use a fallback, the format is: https://www.google.com/maps/search/?api=1&query=... (where Query is 'Name+City'). Do not append random numbers at the end.
+  5. URL VALIDATION VIA FETCH: Before including any link, you MUST use web_fetch to test the URL. If the page returns an error, a 404, or if it redirects to/contains search results for that specific website (e.g., "Search results for...", "No results found"), you MUST reject that link and find another one.
+  6. GOOGLE MAPS FORMAT: If (and only if) you must use a fallback, the format is: https://www.google.com/maps/search/?api=1&query=... (where Query is 'Name+City'). Do not append random numbers at the end.
 
   OTHER RULES:
   - COMPLETENESS: Generate all {{p.DurationDays}} days with 2-3 activities per day.
@@ -141,7 +142,7 @@ private string SystemPrompt => $$"""
          You are STRICTLY FORBIDDEN from guessing or constructing these URLs manually.
          ONLY use EXACT URLs extracted directly from your web_search tool results.
        - URL VALIDATION VIA FETCH: Before including any link, you MUST use web_fetch to test the URL.
-         If the page returns an error or a 404, you MUST reject that link and find another one.
+         If the page returns an error, a 404, OR if it redirects/lands on a search results page on that site (e.g., "Search results for...", "No results found"), you MUST reject that link and find another one.
        - GOOGLE MAPS FALLBACK: Use this ONLY as a last resort. Do not settle for a Maps link if an official site exists.
          Format: `https://www.google.com/maps/search/?api=1&query=Name+Of+Place+City`
        - Reject any URL containing generic search parameters (e.g., /searchresults, ?city=).
