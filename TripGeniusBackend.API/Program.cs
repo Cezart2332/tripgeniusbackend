@@ -189,6 +189,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApi(options =>
 {
     options.AddDocumentTransformer((document, context, ct) =>
+   
     {
         document.Info = new OpenApiInfo
         {
@@ -220,6 +221,7 @@ builder.Services.AddCors(options =>
             .AllowCredentials();
     });
 });
+Console.WriteLine(builder.Configuration.GetConnectionString("DefaultConnection"));
 
 
 var app = builder.Build();
