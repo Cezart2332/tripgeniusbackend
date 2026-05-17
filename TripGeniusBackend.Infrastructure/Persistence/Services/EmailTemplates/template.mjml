@@ -1,0 +1,89 @@
+<mjml>
+  <mj-head>
+    <mj-font name="Lexend" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&amp;display=swap" />
+    <mj-attributes>
+      <mj-all font-family="Lexend, 'Segoe UI', Helvetica, Arial, sans-serif" />
+      <mj-text color="#d3edcf" font-size="15px" line-height="24px" />
+    </mj-attributes>
+    <mj-style>
+      .brand-logo {
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        font-weight: 700;
+        color: #f3fff1 !important;
+      }
+      .email-card {
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+      }
+      .cta-button a {
+        box-shadow: 0 8px 20px rgba(65, 162, 56, 0.25);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+      .cta-button a:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 10px 24px rgba(65, 162, 56, 0.35);
+      }
+      .footer-link {
+        color: #a9c8a3 !important;
+        text-decoration: underline !important;
+      }
+    </mj-style>
+  </mj-head>
+  <mj-body background-color="#0d0f0d">
+    <!-- Header Logo -->
+    <mj-section padding="48px 20px 24px 20px">
+      <mj-column>
+        <mj-text align="center" font-size="20px" font-weight="700" color="#f3fff1" letter-spacing="3px">
+          TRIPGENIUS
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Main Content Card -->
+    <mj-section background-color="#161e16" border="1px solid #2a4029" border-radius="20px" padding="44px 36px" css-class="email-card">
+      <mj-column>
+        <!-- Dynamic Header/Subject -->
+        <mj-text align="center" font-size="24px" font-weight="600" color="#f3fff1" line-height="32px" padding-bottom="16px">
+          {subject}
+        </mj-text>
+        
+        <!-- Elegant divider line -->
+        <mj-divider border-width="1px" border-color="rgba(65, 162, 56, 0.24)" width="60px" padding-bottom="24px" />
+
+        <!-- Dynamic Body Text -->
+        <mj-text align="center" font-size="15px" color="#d3edcf" line-height="26px" padding-bottom="32px">
+          {content}
+        </mj-text>
+
+        <!-- Dynamic CTA Button -->
+        <mj-button href="{actionUrl}" background-color="#41a238" color="#042116" font-size="15px" font-weight="700" border-radius="99px" inner-padding="14px 40px" css-class="cta-button" padding-bottom="32px">
+          {actionLabel}
+        </mj-button>
+
+        <!-- Fallback section -->
+        <mj-divider border-width="1px" border-color="rgba(65, 162, 56, 0.15)" padding-top="8px" padding-bottom="24px" />
+        
+        <mj-text align="center" font-size="12px" color="#a9c8a3" line-height="18px">
+          If the button doesn't work, copy and paste this URL into your browser:
+        </mj-text>
+        <mj-text align="center" font-size="12px" line-height="18px" padding-top="8px">
+          <a href="{actionUrl}" style="color: #17f702; text-decoration: none; word-break: break-all;">{actionUrl}</a>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Footer Section -->
+    <mj-section padding="32px 20px 48px 20px">
+      <mj-column>
+        <mj-text align="center" font-size="12px" color="#a9c8a3" line-height="18px" padding-bottom="8px">
+          © 2026 TripGenius. All rights reserved.
+        </mj-text>
+        <mj-text align="center" font-size="12px" color="#a9c8a3" line-height="18px">
+          <a href="#" class="footer-link" style="margin-right: 8px;">Unsubscribe</a>
+          <span style="color: rgba(65, 162, 56, 0.4);">•</span>
+          <a href="#" class="footer-link" style="margin-left: 8px;">Privacy Policy</a>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>
