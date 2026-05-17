@@ -7,6 +7,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Npgsql;
+using TripGeniusBackend.Application.Interfaces;
+using TripGeniusBackend.Domain.Entities;
 using TripGeniusBackend.Infrastructure.Persistence;
 
 namespace TripGeniusBackend.Tests.Fixtures;
@@ -25,14 +27,15 @@ public class TripGeniusWebApplicationFactory : WebApplicationFactory<Program>
             var dbConn = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection") 
                          ?? "Host=localhost;Port=5432;Database=tripgenius_test;Username=postgres;Password=password";
 
+            // Use the exact JWT settings configured in AuthTestFixture to ensure 100% authorization match
             var jwtKey = Environment.GetEnvironmentVariable("Jwt__Key") 
-                         ?? "superSecretKeyForTestingPurposesOnly1234567890";
+                         ?? "super-secret-key-development-2026";
 
             var jwtIssuer = Environment.GetEnvironmentVariable("Jwt__Issuer") 
-                            ?? "TripGenius";
+                            ?? "tripgenius";
 
             var jwtAudience = Environment.GetEnvironmentVariable("Jwt__Audience") 
-                              ?? "TripGenius";
+                              ?? "tripgenius";
 
             config.AddInMemoryCollection(new Dictionary<string, string?>
             {
@@ -45,6 +48,14 @@ public class TripGeniusWebApplicationFactory : WebApplicationFactory<Program>
 
         builder.ConfigureServices(services =>
         {
+            // Replace real IEmailService registration with a NoOpEmailService to prevent Resend API failures in CI
+            var emailServiceDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IEmailService));
+            if (emailServiceDescriptor != null)
+            {
+                services.Remove(emailServiceDescriptor);
+            }
+            services.AddScoped<IEmailService, NoOpEmailService>();
+
             var dbConn = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection") 
                          ?? "Host=localhost;Port=5432;Database=tripgenius_test;Username=postgres;Password=password";
 
@@ -97,7 +108,28 @@ public class TripGeniusWebApplicationFactory : WebApplicationFactory<Program>
 
                 // Ensure the database is created
                 db.Database.EnsureCreated();
+
+                // Seed a default test user with Id = 1 (to satisfy database foreign keys in relational PostgreSQL DB in CI)
+                var hasher = scopedServices.GetRequiredService<IPasswordHasher>();
+                var testUser = db.Users.FirstOrDefault(u => u.Id == 1);
+                if (testUser == null)
+                {
+                    testUser = User.UserCreate("user1@test.com", hasher.HashPassword("SecurePassword123!"));
+                    testUser.VerifyEmail();
+                    testUser.UpdateProfile("Test User", "", "");
+                    
+                    db.Users.Add(testUser);
+                    db.SaveChanges();
+                }
             }
         });
+    }
+
+    private class NoOpEmailService : IEmailService
+    {
+        public Task SendEmailAsync(string to, string subject, string content, string actionUrl, string actionLabel)
+        {
+            return Task.CompletedTask;
+        }
     }
 }
