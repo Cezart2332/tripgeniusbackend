@@ -169,7 +169,7 @@ jobs:
     # ── PostgreSQL service pentru backend ─────────────────
     services:
       postgres:
-        image: postgres:16
+        image: pgvector/pgvector:pg16
         env:
           POSTGRES_DB: tripgenius
           POSTGRES_USER: postgres
@@ -220,7 +220,7 @@ jobs:
           allow_issue_writing: true
           cmd_options: '-a'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
 
       - name: Cleanup
         if: always()
