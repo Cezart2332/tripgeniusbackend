@@ -166,6 +166,22 @@ jobs:
       contents: read
       issues: write
 
+    # ── PostgreSQL service pentru backend ─────────────────
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: tripgenius
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - uses: actions/checkout@v4
 
@@ -173,9 +189,10 @@ jobs:
         run: |
           docker run -d \
             --name backend \
-            -p 8080:8080 \
+            --network host \
             -e ASPNETCORE_ENVIRONMENT=Development \
-            -e ConnectionStrings__DefaultConnection="${{ secrets.ConnectionStrings__DefaultConnection }}" \
+            -e ASPNETCORE_URLS=http://+:8080 \
+            -e ConnectionStrings__DefaultConnection="Host=localhost;Port=5432;Database=tripgenius;Username=postgres;Password=postgres" \
             -e Jwt__Key="${{ secrets.Jwt__Key }}" \
             -e Jwt__Issuer="TripGenius" \
             -e Jwt__Audience="TripGenius" \
@@ -184,10 +201,14 @@ jobs:
           echo "Waiting for API..."
           for i in {1..30}; do
             if curl -sf http://localhost:8080/health > /dev/null; then
-              echo "✅ API is up!"; break
+              echo "✅ API is up!"; exit 0
             fi
             echo "Attempt $i/30..."; sleep 3
           done
+
+          echo "❌ API failed to start. Container logs:"
+          docker logs backend
+          exit 1
 
       # ZAP scanează API-ul via Swagger/OpenAPI spec
       - name: ZAP API Scan
