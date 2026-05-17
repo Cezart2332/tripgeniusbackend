@@ -229,7 +229,7 @@ var app = builder.Build();
 app.MapOpenApi();
 app.MapScalarApiReference(); 
 
-
+app.UseHsts();
 app.UseHttpsRedirection();
 
 var uploadsPath = Environment.GetEnvironmentVariable("UPLOADS_PATH") 
@@ -258,7 +258,7 @@ app.UseForwardedHeaders(new ForwardedHeadersOptions
 {
     ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
 });
-app.UseHsts();
+
 app.UseAuthentication(); 
 app.UseAuthorization();
 
