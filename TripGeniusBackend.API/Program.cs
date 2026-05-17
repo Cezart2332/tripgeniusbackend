@@ -229,6 +229,11 @@ var app = builder.Build();
 app.MapOpenApi();
 app.MapScalarApiReference(); 
 
+
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
 app.UseHsts();
 app.UseHttpsRedirection();
 
@@ -254,10 +259,7 @@ app.UseMiddleware<ExceptionMiddleware>();
 app.UseMiddleware<LoggingMiddleware>();
 app.UseCors("frontend");
 app.UseRateLimiter();
-app.UseForwardedHeaders(new ForwardedHeadersOptions
-{
-    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
-});
+
 
 app.UseAuthentication(); 
 app.UseAuthorization();

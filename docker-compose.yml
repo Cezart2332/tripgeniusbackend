@@ -1,0 +1,53 @@
+﻿services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tripgenius-backend
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - 'ConnectionStrings__DefaultConnection=${DB_CONNECTION_STRING}'
+      - 'Jwt__Key=${JWT_KEY}'
+      - 'Jwt__Issuer=${JWT_ISSUER:-TripGenius}'
+      - 'Jwt__Audience=${JWT_AUDIENCE:-TripGenius}'
+      - 'Jwt__AccessTokenExpiryMinutes=${JWT_ACCESS_TOKEN_EXPIRY:-30}'
+      - 'Jwt__RefreshTokenExpiryDays=${JWT_REFRESH_TOKEN_EXPIRY:-7}'
+      - 'Email__ResendApiKey=${RESEND_API_KEY}'
+      - 'Google__ClientId=${GOOGLE_CLIENT_ID}'
+      - 'OpenRouter__ApiKey=${OPENROUTER_API_KEY}'
+      - 'Vapid__PublicKey=${VAPID_PUBLIC_KEY}'
+      - 'Vapid__PrivateKey=${VAPID_PRIVATE_KEY}'
+      - 'Vapid__Subject=${VAPID_SUBJECT}'
+      - 'OpenTripMap__ApiKey=${OPENTRIPMAP_API_KEY}'
+      - 'Cors__AllowedOrigins__0=${FRONTEND_URL}'
+      - 'UPLOADS_PATH=${UPLOADS_PATH:-/app/wwwroot}'
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - uploads_data:${UPLOADS_PATH:-/app/wwwroot}
+
+  db:
+    image: pgvector/pgvector:pg17
+    container_name: tripgenius-db
+    restart: always
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
+      - POSTGRES_DB=${POSTGRES_DB:-tripgenius}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  uploads_data:
