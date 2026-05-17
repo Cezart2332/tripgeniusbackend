@@ -220,6 +220,7 @@ jobs:
           format: openapi
           fail_action: false
           allow_issue_writing: true
+          artifact_name: ''            # ← dezactivezi upload-ul intern
           cmd_options: '-a'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -228,7 +229,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: zap-scan-report
+          name: zap-scan-report        # ← nume valid, fara underscore
           path: |
             report_html.html
             report_json.json
