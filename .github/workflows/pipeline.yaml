@@ -70,13 +70,11 @@ jobs:
       - name: Run Semgrep
         uses: semgrep/semgrep-action@v1
         with:
-          config: >
+          config: >-
             p/csharp
             p/secrets
             p/owasp-top-ten
             p/jwt
-        env:
-          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
 
 
 # ─────────────────────────────
