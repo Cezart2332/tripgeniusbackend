@@ -11,12 +11,12 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
+using Scalar.AspNetCore;
 using TripGeniusBackend.Application.Interfaces;
 using TripGeniusBackend.Application.UseCases;
 using TripGeniusBackend.Infrastructure.Persistence;
 using TripGeniusBackend.Infrastructure.Persistence.Repositories;
 using TripGeniusBackend.Infrastructure.Persistence.Services;
-using Scalar.AspNetCore;
 using TripGeniusBackend.Application.Interfaces.Queries;
 using TripGeniusBackend.Application.Interfaces.Repositories;
 using TripGeniusBackend.Application.Interfaces.UseCases;
@@ -154,10 +154,18 @@ builder.Services.AddAuthentication(options =>
 
 
 
+builder.Services.AddEndpointsApiExplorer();
+
 builder.Services.AddOpenApi(options =>
 {
     options.AddDocumentTransformer((document, context, ct) =>
     {
+        document.Info = new OpenApiInfo
+        {
+            Title = "TripGenius API",
+            Version = "v1"
+        };
+        
         document.Components ??= new();
         document.Components.SecuritySchemes = new Dictionary<string, IOpenApiSecurityScheme>
         {
@@ -187,11 +195,10 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-    app.MapScalarApiReference(); // UI at /scalar/v1
-}
+
+app.MapOpenApi();
+app.MapScalarApiReference(); 
+
 
 app.UseHttpsRedirection();
 
