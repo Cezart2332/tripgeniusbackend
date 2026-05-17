@@ -25,6 +25,8 @@ using Resend;
 using TripGeniusBackend.API.Middleware;
 using TripGeniusBackend.Application.Settings;
 using TripGeniusBackend.Infrastructure.Persistence.Hubs;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Threading.RateLimiting;
 using QuestPDF.Infrastructure;
 using WebPush;
 
@@ -38,6 +40,34 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Configuration
     .AddJsonFile("appsettings.json")
     .AddEnvironmentVariables();
+
+builder.Services.AddRateLimiter(options =>
+{
+    // Politica globală — 30 requests / minut per IP
+    options.AddFixedWindowLimiter("global", opt =>
+    {
+        opt.PermitLimit = 30;
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        opt.QueueLimit = 0;
+    });
+
+    // Politica pentru auth — mai strictă (5 requests / minut)
+    options.AddFixedWindowLimiter("auth", opt =>
+    {
+        opt.PermitLimit = 5;
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.QueueLimit = 0;
+    });
+
+    // Ce returnezi când e blocat
+    options.OnRejected = async (context, token) =>
+    {
+        context.HttpContext.Response.StatusCode = 429;
+        await context.HttpContext.Response.WriteAsync(
+            "Too many requests. Please try again later.", token);
+    };
+});
 
 
 builder.Services.AddSignalR();
@@ -213,18 +243,27 @@ app.UseStaticFiles(new StaticFileOptions
     FileProvider = new PhysicalFileProvider(uploadsPath),
     RequestPath = ""
 });
+app.Use(async (ctx, next) =>
+{
+    ctx.Response.Headers.Append("X-Content-Type-Options", "nosniff");
+    ctx.Response.Headers.Append("X-Frame-Options", "DENY");
+    ctx.Response.Headers.Append("X-XSS-Protection", "1; mode=block");
+    await next();
+});
 app.UseMiddleware<ExceptionMiddleware>(); 
 app.UseMiddleware<LoggingMiddleware>();
 app.UseCors("frontend");
+app.UseRateLimiter();
 app.UseForwardedHeaders(new ForwardedHeadersOptions
 {
     ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
 });
+app.UseHsts();
 app.UseAuthentication(); 
 app.UseAuthorization();
 
 
-app.MapControllers();
+app.MapControllers().RequireRateLimiting("global");
 app.MapHub<TripChatHub>("/hubs/trip-chat");
 app.MapHub<AiChatHub>("/hubs/ai-chat");
 
