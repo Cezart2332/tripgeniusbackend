@@ -80,6 +80,11 @@ builder.Services.AddControllers()
 
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection") 
+                       ?? "Host=localhost;Port=5432;Database=tripgenius;Username=postgres;Password=password";
+}
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
 dataSourceBuilder.ConnectionStringBuilder.SearchPath = "public"; // setare explicită, nu din connection string
 var dataSource = dataSourceBuilder.Build();
