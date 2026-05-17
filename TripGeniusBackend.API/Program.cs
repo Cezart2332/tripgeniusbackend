@@ -1,6 +1,8 @@
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -198,7 +200,10 @@ builder.Services.AddAuthentication(options =>
 
 
 
-builder.Services.AddHealthChecks();
+builder.Services.AddHealthChecks()
+    .AddCheck<DatabaseHealthCheck>("PostgreSQL", tags: new[] { "ready" })
+    .AddCheck<EmailServiceHealthCheck>("EmailService", tags: new[] { "live" })
+    .AddCheck<AiServiceHealthCheck>("AiService", tags: new[] { "live" });
 builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddOpenApi(options =>
@@ -281,7 +286,21 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 
-app.MapHealthChecks("/health");
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready")
+});
+
+app.MapHealthChecks("/health/live", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("live") || check.Tags.Contains("ready")
+});
+
+// Alias backward compatibility
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready")
+});
 app.MapControllers().RequireRateLimiting("global");
 app.MapHub<TripChatHub>("/hubs/trip-chat");
 app.MapHub<AiChatHub>("/hubs/ai-chat");
@@ -294,3 +313,57 @@ if (db.Database.IsRelational())
 }
 await db.SaveChangesAsync();
 app.Run();
+
+public class DatabaseHealthCheck : IHealthCheck
+{
+    private readonly AppDbContext _context;
+    public DatabaseHealthCheck(AppDbContext context) => _context = context;
+
+    public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (await _context.Database.CanConnectAsync(cancellationToken))
+            {
+                return HealthCheckResult.Healthy("PostgreSQL database is connected.");
+            }
+            return HealthCheckResult.Unhealthy("Cannot connect to PostgreSQL database.");
+        }
+        catch (Exception ex)
+        {
+            return HealthCheckResult.Unhealthy("PostgreSQL database connection failed.", ex);
+        }
+    }
+}
+
+public class EmailServiceHealthCheck : IHealthCheck
+{
+    private readonly IConfiguration _config;
+    public EmailServiceHealthCheck(IConfiguration config) => _config = config;
+
+    public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
+    {
+        var apiKey = _config["Email:ResendApiKey"];
+        if (string.IsNullOrWhiteSpace(apiKey))
+        {
+            return Task.FromResult(HealthCheckResult.Unhealthy("Resend API key is not configured."));
+        }
+        return Task.FromResult(HealthCheckResult.Healthy("Resend API is configured."));
+    }
+}
+
+public class AiServiceHealthCheck : IHealthCheck
+{
+    private readonly IConfiguration _config;
+    public AiServiceHealthCheck(IConfiguration config) => _config = config;
+
+    public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
+    {
+        var apiKey = _config["OpenRouter:ApiKey"];
+        if (string.IsNullOrWhiteSpace(apiKey))
+        {
+            return Task.FromResult(HealthCheckResult.Unhealthy("OpenRouter API key is not configured."));
+        }
+        return Task.FromResult(HealthCheckResult.Healthy("OpenRouter API is configured."));
+    }
+}

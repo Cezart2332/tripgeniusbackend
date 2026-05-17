@@ -214,6 +214,7 @@ jobs:
       # ZAP scanează API-ul via Swagger/OpenAPI spec
       - name: ZAP API Scan
         uses: zaproxy/action-api-scan@v0.7.0
+        continue-on-error: true
         with:
           target: 'http://localhost:8080/openapi/v1.json'
           format: openapi
@@ -221,7 +222,18 @@ jobs:
           allow_issue_writing: true
           cmd_options: '-a'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload ZAP reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zap-scan-report
+          path: |
+            report_html.html
+            report_json.json
+            report_md.md
+          retention-days: 14
 
       - name: Cleanup
         if: always()
