@@ -85,7 +85,10 @@ dataSourceBuilder.ConnectionStringBuilder.SearchPath = "public"; // setare expli
 var dataSource = dataSourceBuilder.Build();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(dataSource, o => o.UseVector())
+    options.UseNpgsql(dataSource, o =>{
+        o.UseVector();
+        o.MigrationsHistoryTable("__EFMigrationsHistory", "public");
+        })
         .ConfigureWarnings(w => 
             w.Ignore(RelationalEventId.PendingModelChangesWarning)));
     

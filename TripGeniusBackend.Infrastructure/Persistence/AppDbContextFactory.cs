@@ -21,17 +21,22 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
             .AddJsonFile("appsettings.Development.json", optional: true)
             .AddEnvironmentVariables()
             .Build();
-
-        var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
+        
+        
         var dataSourceBuilder = new NpgsqlDataSourceBuilder(
             configuration.GetConnectionString("DefaultConnection"));
         dataSourceBuilder.ConnectionStringBuilder.SearchPath = "public";
         var dataSource = dataSourceBuilder.Build();
 
-        optionsBuilder.UseNpgsql(dataSource, o => o.UseVector())
+        var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
+        optionsBuilder.UseNpgsql(
+                configuration.GetConnectionString("DefaultConnection"),
+                o => {
+                    o.UseVector();
+                    o.MigrationsHistoryTable("__EFMigrationsHistory", "public"); // <-- și asta
+                })
             .ConfigureWarnings(w => 
                 w.Ignore(RelationalEventId.PendingModelChangesWarning));
-
         return new AppDbContext(optionsBuilder.Options);
     }
 }

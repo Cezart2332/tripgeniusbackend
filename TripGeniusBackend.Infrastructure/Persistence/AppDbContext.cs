@@ -31,7 +31,7 @@ public class AppDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
-        
+        modelBuilder.HasDefaultSchema("public");
         modelBuilder.HasPostgresExtension("vector");
         modelBuilder.Entity<AiMemory>()
             .Property(m => m.Embedding)
