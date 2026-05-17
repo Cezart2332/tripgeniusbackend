@@ -193,6 +193,7 @@ builder.Services.AddAuthentication(options =>
 
 
 
+builder.Services.AddHealthChecks();
 builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddOpenApi(options =>
@@ -275,12 +276,16 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 
+app.MapHealthChecks("/health");
 app.MapControllers().RequireRateLimiting("global");
 app.MapHub<TripChatHub>("/hubs/trip-chat");
 app.MapHub<AiChatHub>("/hubs/ai-chat");
 
 using var scope = app.Services.CreateScope();
 var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-db.Database.Migrate();
+if (db.Database.IsRelational())
+{
+    db.Database.Migrate();
+}
 await db.SaveChangesAsync();
 app.Run();

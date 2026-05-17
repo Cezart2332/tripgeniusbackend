@@ -1,4 +1,4 @@
-﻿using TripGeniusBackend.Application.DTOs.User;
+using TripGeniusBackend.Application.DTOs.User;
 using TripGeniusBackend.Application.Interfaces;
 using TripGeniusBackend.Application.Interfaces.Queries;
 using TripGeniusBackend.Application.Interfaces.UseCases;
@@ -24,6 +24,9 @@ public class BugService : IBugService
 
     public async Task ReportBug(BugRequest bugRequest)
     {
+        if (bugRequest == null) throw new ArgumentNullException(nameof(bugRequest));
+        if (string.IsNullOrEmpty(bugRequest.Description)) throw new ArgumentException("Description cannot be empty", nameof(bugRequest));
+
         var user = await _userRepository.GetUserById(_jwtService.GetUserId());
         if(user == null) throw new KeyNotFoundException("User not found");
         Bug bug = new Bug

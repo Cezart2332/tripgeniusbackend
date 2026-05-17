@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using TripGeniusBackend.Application.Interfaces;
 using TripGeniusBackend.Domain.Entities;
 
@@ -15,7 +15,9 @@ public class RefreshTokenRepository : IRefreshTokenRepository
 
     public async Task DeleteAllRefreshTokens(int userId)
     {
-        await _context.RefreshTokens.Where(t => t.UserId == userId).ExecuteDeleteAsync();
+        var tokens = await _context.RefreshTokens.Where(t => t.UserId == userId).ToListAsync();
+        _context.RefreshTokens.RemoveRange(tokens);
+        await _context.SaveChangesAsync();
     }
     
     public async Task AddRefreshToken(RefreshToken refreshToken)
@@ -25,10 +27,8 @@ public class RefreshTokenRepository : IRefreshTokenRepository
 
     public async Task DeleteRefreshToken(RefreshToken refreshToken)
     {
-
-        await _context.RefreshTokens
-            .Where(t => t.Id == refreshToken.Id)
-            .ExecuteDeleteAsync();
+        _context.RefreshTokens.Remove(refreshToken);
+        await _context.SaveChangesAsync();
     }
 
     public async Task SaveChanges()

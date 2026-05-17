@@ -1,4 +1,4 @@
-﻿namespace TripGeniusBackend.Domain.Entities;
+namespace TripGeniusBackend.Domain.Entities;
 
 public class Preferences
 {
@@ -7,7 +7,7 @@ public class Preferences
     public int UserId { get; private set; }
     public User User { get; private set; }
     public int MaxGroupSize { get; private set; }
-    public List<String> Tags { get; private set; }
+    public List<String> Tags { get; private set; } = new();
 
     public void Update(int maxGroupSize, List<String> tags)
     {

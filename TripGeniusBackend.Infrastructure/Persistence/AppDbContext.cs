@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using TripGeniusBackend.Domain.Entities;
 
 namespace TripGeniusBackend.Infrastructure.Persistence;
@@ -31,11 +31,28 @@ public class AppDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
-        modelBuilder.HasDefaultSchema("public");
-        modelBuilder.HasPostgresExtension("vector");
-        modelBuilder.Entity<AiMemory>()
-            .Property(m => m.Embedding)
-            .HasColumnType("vector(2048)"); 
+        if (Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory")
+        {
+            modelBuilder.Entity<AiMemory>()
+                .Property(m => m.Embedding)
+                .HasConversion(
+                    v => v.ToString(),
+                    v => new Pgvector.Vector(v));
+
+            modelBuilder.Entity<Trip>()
+                .Property(t => t.Embedding)
+                .HasConversion(
+                    v => v != null ? v.ToString() : null,
+                    v => v != null ? new Pgvector.Vector(v) : null);
+        }
+        else
+        {
+            modelBuilder.HasDefaultSchema("public");
+            modelBuilder.HasPostgresExtension("vector");
+            modelBuilder.Entity<AiMemory>()
+                .Property(m => m.Embedding)
+                .HasColumnType("vector(2048)"); 
+        }
         modelBuilder.Entity<Trip>().Property(t => t.Status).HasConversion<string>();
         modelBuilder.Entity<TripMember>().Property(t => t.MemberStatus).HasConversion<string>();
         modelBuilder.Entity<TripMember>().Property(t => t.Role).HasConversion<string>();

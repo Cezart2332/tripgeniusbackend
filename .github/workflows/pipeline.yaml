@@ -1,41 +1,227 @@
-name: CI Pipeline
+name: Backend CI Pipeline
 
 on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
-  build:
+
+# ─────────────────────────────
+# 1. TEST & AUDIT
+# ─────────────────────────────
+  test:
+    name: Test & Audit
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0'
 
-      - name: Login to Docker Registry
-        uses: docker/login-action@v3
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Run tests
+        run: dotnet test --no-build --configuration Release \
+               --collect:"XPlat Code Coverage" \
+               --results-directory ./coverage
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: ./coverage
+          retention-days: 14
+
+      # ── Dependency audit — CVE-uri în pachete NuGet ──────
+      - name: NuGet vulnerability audit
+        run: |
+          dotnet list package --vulnerable --include-transitive 2>&1 | tee vuln-report.txt
+          if grep -q "has the following vulnerable packages" vuln-report.txt; then
+            echo "❌ Vulnerable NuGet packages found!"
+            cat vuln-report.txt
+            exit 1
+          fi
+          echo "✅ No vulnerable packages found"
+
+
+# ─────────────────────────────
+# 2. SEMGREP SAST
+# ─────────────────────────────
+  semgrep:
+    name: Semgrep SAST
+    runs-on: ubuntu-latest
+    needs: test
+
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Semgrep
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: >
+            p/csharp
+            p/secrets
+            p/owasp-top-ten
+            p/jwt
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+
+
+# ─────────────────────────────
+# 3. GITLEAKS — SECRET SCANNING
+# ─────────────────────────────
+  gitleaks:
+    name: Secret Scanning
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0    # scanează tot istoricul git, nu doar ultimul commit
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+
+# ─────────────────────────────
+# 4. BUILD & PUSH DOCKER IMAGE
+# ─────────────────────────────
+  build:
+    name: Build & Push Docker
+    runs-on: ubuntu-latest
+    needs: [test, semgrep, gitleaks]   # ✅ Toate security gates trebuie să treacă
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          pull: true
           tags: |
             cezarique/tripgeniusbackend:latest
-            cezarique/tripgeniusbackend:${{ github.sha }}
+            cezarique/tripgeniusbackend:sha-${{ github.sha }}
           cache-from: type=registry,ref=cezarique/tripgeniusbackend:cache
           cache-to: type=registry,ref=cezarique/tripgeniusbackend:cache,mode=max
-          
+
+
+# ─────────────────────────────
+# 5. TRIVY — CONTAINER SCAN
+# ─────────────────────────────
+  trivy:
+    name: Trivy Container Scan
+    runs-on: ubuntu-latest
+    needs: build
+
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Run Trivy
+        uses: aquasecurity/trivy-action@v0.24.0
+        with:
+          image-ref: cezarique/tripgeniusbackend:sha-${{ github.sha }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '1'             # blochează pipeline-ul la High/Critical
+
+      - name: Upload Trivy results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+
+# ─────────────────────────────
+# 6. OWASP ZAP — API SCAN
+# ─────────────────────────────
+  zap:
+    name: OWASP ZAP API Scan
+    runs-on: ubuntu-latest
+    needs: build
+
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start backend container
+        run: |
+          docker run -d \
+            --name backend \
+            -p 8080:8080 \
+            -e ASPNETCORE_ENVIRONMENT=Development \
+            -e ConnectionStrings__DefaultConnection="${{ secrets.ConnectionStrings__DefaultConnection }}" \
+            -e Jwt__Key="${{ secrets.Jwt__Key }}" \
+            -e Jwt__Issuer="TripGenius" \
+            -e Jwt__Audience="TripGenius" \
+            cezarique/tripgeniusbackend:sha-${{ github.sha }}
+
+          echo "Waiting for API..."
+          for i in {1..30}; do
+            if curl -sf http://localhost:8080/health > /dev/null; then
+              echo "✅ API is up!"; break
+            fi
+            echo "Attempt $i/30..."; sleep 3
+          done
+
+      # ZAP scanează API-ul via Swagger/OpenAPI spec
+      - name: ZAP API Scan
+        uses: zaproxy/action-api-scan@v0.7.0
+        with:
+          target: 'http://localhost:8080/openapi/v1.json'
+          format: openapi
+          fail_action: false
+          allow_issue_writing: true
+          cmd_options: '-a'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cleanup
+        if: always()
+        run: docker rm -f backend
+
+
+# ─────────────────────────────
+# 7. DEPLOY (ONLY IF ALL OK)
+# ─────────────────────────────
+  deploy:
+    name: Deploy to Coolify
+    runs-on: ubuntu-latest
+    needs: [build, trivy, zap]    # ✅ Container scan + API scan trebuie să treacă
+
+    steps:
       - name: Trigger Coolify deploy
         env:
-          COOLIFY_URL: ${{ secrets.COOLIFY_DOMAIN }}    
+          COOLIFY_URL: ${{ secrets.COOLIFY_DOMAIN }}
           COOLIFY_UUID: ${{ secrets.COOLIFY_UUID }}
           COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
         run: |

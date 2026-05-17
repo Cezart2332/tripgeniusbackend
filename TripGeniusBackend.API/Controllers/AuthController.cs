@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using TripGeniusBackend.Application.DTOs.Auth;
 using TripGeniusBackend.Application.Interfaces;
 using TripGeniusBackend.Application.Interfaces.UseCases;
@@ -14,12 +14,6 @@ public class AuthController : ControllerBase
     public AuthController(IAuthService authService)
     {
         _authService = authService;
-    }
-
-    [HttpGet("health")]
-    public async Task<IActionResult> Health()
-    {
-        return Ok();
     }
 
     [HttpPost("register")]

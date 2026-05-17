@@ -1,4 +1,4 @@
-﻿using TripGeniusBackend.Application.DTOs.AiChatResponse;
+using TripGeniusBackend.Application.DTOs.AiChatResponse;
 using TripGeniusBackend.Application.Interfaces;
 using TripGeniusBackend.Application.Interfaces.Queries;
 using TripGeniusBackend.Application.Interfaces.UseCases;
@@ -19,7 +19,7 @@ public class AiChatService : IAiChatService
     public async Task<List<AiChatResponse>> GetMessages()
     {
         int userId = _jwtService.GetUserId();
-        if (userId == 0 || userId == null) throw new KeyNotFoundException("Not a valid user!");
+        if (userId <= 0 || userId == null) throw new KeyNotFoundException("Not a valid user!");
         return await _aiChatQueryService.GetUserHistory(userId);
     }
 }

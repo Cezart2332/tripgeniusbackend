@@ -1,4 +1,4 @@
-﻿using Google.Apis.Auth;
+using Google.Apis.Auth;
 using Microsoft.Extensions.Options;
 using TripGeniusBackend.Application.Interfaces;
 using TripGeniusBackend.Application.DTOs.Auth;
@@ -33,7 +33,7 @@ public class AuthService : IAuthService
     public async Task<string> Register(RegisterRequest registerRequest)
     {
         if (await _userRepository.UserExists(registerRequest.Email))
-            throw new AppException(402,"Email already exists");
+            throw new AppException(400, "Email already exists");
         string hashedPassword = _passwordHasher.HashPassword(registerRequest.Password);
         User user = User.UserCreate(registerRequest.Email, hashedPassword);
         user.UpdateProfile(registerRequest.Username, "", "");
@@ -52,8 +52,8 @@ public class AuthService : IAuthService
     public async Task<AuthResponse> Login(LoginRequest loginRequest)
     {
         var user = await _userRepository.GetUserByEmail(loginRequest.Email);
-        if (!_passwordHasher.VerifyPassword(loginRequest.Password,user.Password)) throw new ArgumentException("Invalid email or password");
-        if(user == null) throw new ArgumentException("Invalid email or password");
+        if (user == null) throw new ArgumentException("Invalid email or password");
+        if (!_passwordHasher.VerifyPassword(loginRequest.Password, user.Password)) throw new ArgumentException("Invalid email or password");
         if (user.IsVerified == false)
         {
             user.RegenerateVerifyToken();
@@ -123,11 +123,11 @@ public class AuthService : IAuthService
 
     public async Task<AuthResponse> RefreshToken(string? refreshToken)
     {
-        if (refreshToken == null) throw new KeyNotFoundException("Refresh token is null");
+        if (refreshToken == null) throw new AppException(401, "Refresh token is null");
         var hashedRefreshToken = _tokenHasher.HashToken(refreshToken);
         var refreshTokenEntity =  await _refreshTokenQueryService.GetRefreshToken(hashedRefreshToken);
-        if (refreshTokenEntity == null) throw new KeyNotFoundException("Refresh token not found");
-        if (refreshTokenEntity.Expires < DateTime.UtcNow)  throw new AppException(402,"Refresh token expired");
+        if (refreshTokenEntity == null) throw new AppException(401, "Refresh token not found");
+        if (refreshTokenEntity.Expires < DateTime.UtcNow)  throw new AppException(401, "Refresh token expired");
         
         AuthResponse authResponse = await _jwtService.GenerateTokens(refreshTokenEntity.User);
 
