@@ -244,8 +244,8 @@ app.UseForwardedHeaders(new ForwardedHeadersOptions
 {
     ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
 });
-app.UseHsts();
-app.UseHttpsRedirection();
+//app.UseHsts();
+//app.UseHttpsRedirection();
 
 var uploadsPath = Environment.GetEnvironmentVariable("UPLOADS_PATH") 
     ?? Path.Combine(builder.Environment.ContentRootPath, "wwwroot");
