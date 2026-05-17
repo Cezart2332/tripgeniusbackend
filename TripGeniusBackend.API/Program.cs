@@ -27,6 +27,7 @@ using TripGeniusBackend.Application.Settings;
 using TripGeniusBackend.Infrastructure.Persistence.Hubs;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
+using Npgsql;
 using QuestPDF.Infrastructure;
 using WebPush;
 
@@ -78,10 +79,15 @@ builder.Services.AddControllers()
     });
 
 
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
+dataSourceBuilder.ConnectionStringBuilder.SearchPath = "public"; // setare explicită, nu din connection string
+var dataSource = dataSourceBuilder.Build();
+
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"), o => o.UseVector())
+    options.UseNpgsql(dataSource, o => o.UseVector())
         .ConfigureWarnings(w => 
-            w.Ignore(RelationalEventId.PendingModelChangesWarning))); 
+            w.Ignore(RelationalEventId.PendingModelChangesWarning)));
     
 builder.Services.AddHttpContextAccessor();
 
@@ -221,7 +227,6 @@ builder.Services.AddCors(options =>
             .AllowCredentials();
     });
 });
-Console.WriteLine(builder.Configuration.GetConnectionString("DefaultConnection"));
 
 
 var app = builder.Build();
