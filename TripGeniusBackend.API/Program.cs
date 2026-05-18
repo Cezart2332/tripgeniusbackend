@@ -257,6 +257,8 @@ app.UseForwardedHeaders(new ForwardedHeadersOptions
 {
     ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
 });
+
+app.UseCors("frontend");
 //app.UseHsts();
 //app.UseHttpsRedirection();
 
@@ -280,7 +282,6 @@ app.Use(async (ctx, next) =>
 });
 app.UseMiddleware<ExceptionMiddleware>(); 
 app.UseMiddleware<LoggingMiddleware>();
-app.UseCors("frontend");
 app.UseRateLimiter();
 
 

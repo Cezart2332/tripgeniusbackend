@@ -18,7 +18,7 @@ public class AiService : IAiService
     private readonly string _apiKey;
     private readonly GeocodingService _geocodingService;
     private readonly ITripService _tripService;
-      private string BuildPrompt(AiTripPlanner p) => $$"""
+    private string BuildPrompt(AiTripPlanner p) => $$"""
   You are a travel planning expert. Think out loud, as you are writing to the user, as you plan this trip — search the web, analyze options, and discuss routes and activities naturally.
   Analyze the description and respond in that language.
   
@@ -95,7 +95,7 @@ public class AiService : IAiService
   }
   ===TRIP_JSON_END===
   """;
-private string SystemPrompt => $$"""
+    private string SystemPrompt => $$"""
     You are TripGenius AI, a travel and app support assistant in the TripGenius app.
     Analyze the conversation and respond in the user's language.
 
@@ -180,7 +180,7 @@ private string SystemPrompt => $$"""
     Append exactly this format (use the exact URLs verified via search/fetch/Maps fallback):
     [LINKS:{"links":[{"title":"Place Name","url":"https://link.com"}]}]
     """;
-    public AiService(HttpClient httpClient, IOptions<OpenRouterSettings> openRouterSettings,IOptions<OpenTripMapSettings> openTripMapSettings, GeocodingService geocodingService, ITripService tripService)
+    public AiService(HttpClient httpClient, IOptions<OpenRouterSettings> openRouterSettings, IOptions<OpenTripMapSettings> openTripMapSettings, GeocodingService geocodingService, ITripService tripService)
     {
         _httpClient = httpClient;
         _apiKey = openRouterSettings.Value.ApiKey;
@@ -214,7 +214,7 @@ private string SystemPrompt => $$"""
         var wrappedPrompt = $"[MANDATORY INSTRUCTION: Before writing anything, you MUST call web_search and web_fetch now for any real-world information in this message. Do NOT use memory or previous search results.]\n\n{prompt}";
         fullMessages.Add(new { role = "user", content = wrappedPrompt });
 
-        int maxIterations = 6;
+        int maxIterations = 10;
 
         for (int i = 0; i < maxIterations; i++)
         {
@@ -329,159 +329,159 @@ private string SystemPrompt => $$"""
         }
     }
 
-public async Task GenerateTripAsync(AiTripPlanner aiTripPlanner)
-{
-    var p = aiTripPlanner;
-    var messages = new List<object>
+    public async Task GenerateTripAsync(AiTripPlanner aiTripPlanner)
+    {
+        var p = aiTripPlanner;
+        var messages = new List<object>
     {
         new { role = "system", content = BuildPrompt(p) },
         new { role = "user",   content = "Generate me a trip based on my requirements!" }
     };
 
-    var fullTextBuilder = new StringBuilder();
-    int maxIterations = 8;
+        var fullTextBuilder = new StringBuilder();
+        int maxIterations = 15;
 
-    for (int i = 0; i < maxIterations; i++)
-    {
-        Console.WriteLine($"[DEBUG] Iterația {i + 1}...");
-
-        var body = new
+        for (int i = 0; i < maxIterations; i++)
         {
-            model = "deepseek/deepseek-v4-flash",
-            stream = true,
-            messages,
-            tools = new object[]
+            Console.WriteLine($"[DEBUG] Iterația {i + 1}...");
+
+            var body = new
             {
+                model = "deepseek/deepseek-v4-flash",
+                stream = true,
+                messages,
+                tools = new object[]
+                {
                 new { type = "openrouter:web_search" },
                 new { type = "openrouter:web_fetch" }
-            }
-        };
+                }
+            };
 
-        var request = new HttpRequestMessage(HttpMethod.Post, "https://openrouter.ai/api/v1/chat/completions");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
-        request.Headers.Add("HTTP-Referer", "https://tripgenius.online");
-        request.Headers.Add("X-Title", "TripGenius");
-        request.Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
+            var request = new HttpRequestMessage(HttpMethod.Post, "https://openrouter.ai/api/v1/chat/completions");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+            request.Headers.Add("HTTP-Referer", "https://tripgenius.online");
+            request.Headers.Add("X-Title", "TripGenius");
+            request.Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
 
-        var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
-        response.EnsureSuccessStatusCode();
+            var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+            response.EnsureSuccessStatusCode();
 
-        using var stream = await response.Content.ReadAsStreamAsync();
-        using var reader = new StreamReader(stream);
+            using var stream = await response.Content.ReadAsStreamAsync();
+            using var reader = new StreamReader(stream);
 
-        var iterationText = new StringBuilder();
-        var toolCallsJson  = new StringBuilder();
-        string? finishReason = null;
-        bool hasToolCalls = false;
+            var iterationText = new StringBuilder();
+            var toolCallsJson = new StringBuilder();
+            string? finishReason = null;
+            bool hasToolCalls = false;
 
-        while (!reader.EndOfStream)
-        {
-            var line = await reader.ReadLineAsync();
-            if (string.IsNullOrEmpty(line) || !line.StartsWith("data:")) continue;
-
-            var json = line[5..].Trim();
-            if (json == "[DONE]") break;
-
-            try
+            while (!reader.EndOfStream)
             {
-                using var doc = JsonDocument.Parse(json);
-                if (!doc.RootElement.TryGetProperty("choices", out var choices) || choices.GetArrayLength() == 0)
-                    continue;
+                var line = await reader.ReadLineAsync();
+                if (string.IsNullOrEmpty(line) || !line.StartsWith("data:")) continue;
 
-                var choice = choices[0];
-                var delta  = choice.GetProperty("delta");
+                var json = line[5..].Trim();
+                if (json == "[DONE]") break;
 
-                // Captează finish_reason
-                if (choice.TryGetProperty("finish_reason", out var fr) && fr.ValueKind != JsonValueKind.Null)
-                    finishReason = fr.GetString();
-
-                // Acumulează text normal
-                if (delta.TryGetProperty("content", out var contentEl) && contentEl.ValueKind != JsonValueKind.Null)
+                try
                 {
-                    var chunk = contentEl.GetString();
-                    if (!string.IsNullOrEmpty(chunk))
-                    {
-                        iterationText.Append(chunk);
-                        Console.Write(chunk);
-                    }
-                }
+                    using var doc = JsonDocument.Parse(json);
+                    if (!doc.RootElement.TryGetProperty("choices", out var choices) || choices.GetArrayLength() == 0)
+                        continue;
 
-                // Acumulează reasoning (thinking)
-                if (delta.TryGetProperty("reasoning_content", out var reasoningEl) && reasoningEl.ValueKind != JsonValueKind.Null)
-                {
-                    var reasoning = reasoningEl.GetString();
-                    if (!string.IsNullOrEmpty(reasoning))
-                    {
-                        iterationText.Append(reasoning);
-                        Console.Write(reasoning);
-                    }
-                }
+                    var choice = choices[0];
+                    var delta = choice.GetProperty("delta");
 
-                // Detectează tool calls
-                if (delta.TryGetProperty("tool_calls", out _))
-                    hasToolCalls = true;
+                    // Captează finish_reason
+                    if (choice.TryGetProperty("finish_reason", out var fr) && fr.ValueKind != JsonValueKind.Null)
+                        finishReason = fr.GetString();
+
+                    // Acumulează text normal
+                    if (delta.TryGetProperty("content", out var contentEl) && contentEl.ValueKind != JsonValueKind.Null)
+                    {
+                        var chunk = contentEl.GetString();
+                        if (!string.IsNullOrEmpty(chunk))
+                        {
+                            iterationText.Append(chunk);
+                            Console.Write(chunk);
+                        }
+                    }
+
+                    // Acumulează reasoning (thinking)
+                    if (delta.TryGetProperty("reasoning_content", out var reasoningEl) && reasoningEl.ValueKind != JsonValueKind.Null)
+                    {
+                        var reasoning = reasoningEl.GetString();
+                        if (!string.IsNullOrEmpty(reasoning))
+                        {
+                            iterationText.Append(reasoning);
+                            Console.Write(reasoning);
+                        }
+                    }
+
+                    // Detectează tool calls
+                    if (delta.TryGetProperty("tool_calls", out _))
+                        hasToolCalls = true;
+                }
+                catch (JsonException) { continue; }
             }
-            catch (JsonException) { continue; }
+
+            var iterText = iterationText.ToString();
+            fullTextBuilder.Append(iterText);
+            Console.WriteLine($"\n[DEBUG] Iterația {i + 1} terminată. finish_reason={finishReason}, hasToolCalls={hasToolCalls}, chars={iterText.Length}");
+
+            // Dacă a terminat normal — avem tot textul
+            if (finishReason == "stop" || finishReason == "end_turn")
+            {
+                Console.WriteLine("[DEBUG] Stream terminat normal.");
+                break;
+            }
+
+            // Dacă a făcut tool calls — adaugi în istoric și continui
+            if (hasToolCalls || finishReason == "tool_calls")
+            {
+                Console.WriteLine("[DEBUG] Tool calls detectate, continui...");
+
+                // ALWAYS add an assistant message to keep the role sequence valid (User -> Assistant -> User)
+                // Even if iterText is empty, we must provide an assistant message if there were tool calls.
+                messages.Add(new { role = "assistant", content = iterText.Length > 0 ? iterText : "Thinking..." });
+
+                // Adaugi un mesaj user care îl împinge să continue
+                messages.Add(new { role = "user", content = "Continue planning and generate the final JSON. Remember to use web_search or web_fetch again for any missing details or verification." });
+                continue;
+            }
+
+            // Fallback — s-a oprit fără motiv clar
+            if (iterText.Length > 0)
+                break;
         }
 
-        var iterText = iterationText.ToString();
-        fullTextBuilder.Append(iterText);
-        Console.WriteLine($"\n[DEBUG] Iterația {i + 1} terminată. finish_reason={finishReason}, hasToolCalls={hasToolCalls}, chars={iterText.Length}");
+        var fullText = fullTextBuilder.ToString();
+        Console.WriteLine($"\n[DEBUG] Text total acumulat: {fullText.Length} chars");
 
-        // Dacă a terminat normal — avem tot textul
-        if (finishReason == "stop" || finishReason == "end_turn")
+        // Extrage JSON dintre markeri
+        const string startMarker = "===TRIP_JSON_START===";
+        const string endMarker = "===TRIP_JSON_END===";
+
+        var startIdx = fullText.IndexOf(startMarker, StringComparison.OrdinalIgnoreCase);
+        var endIdx = fullText.IndexOf(endMarker, StringComparison.OrdinalIgnoreCase);
+
+        string jsonContent;
+        if (startIdx != -1 && endIdx != -1 && endIdx > startIdx)
         {
-            Console.WriteLine("[DEBUG] Stream terminat normal.");
-            break;
+            jsonContent = fullText[(startIdx + startMarker.Length)..endIdx].Trim();
         }
-
-        // Dacă a făcut tool calls — adaugi în istoric și continui
-        if (hasToolCalls || finishReason == "tool_calls")
+        else
         {
-            Console.WriteLine("[DEBUG] Tool calls detectate, continui...");
-
-            // ALWAYS add an assistant message to keep the role sequence valid (User -> Assistant -> User)
-            // Even if iterText is empty, we must provide an assistant message if there were tool calls.
-            messages.Add(new { role = "assistant", content = iterText.Length > 0 ? iterText : "Thinking..." });
-
-            // Adaugi un mesaj user care îl împinge să continue
-            messages.Add(new { role = "user", content = "Continue planning and generate the final JSON. Remember to use web_search or web_fetch again for any missing details or verification." });
-            continue;
+            // Fallback: primul { până la ultimul }
+            Console.WriteLine("[DEBUG] Markeri negăsiți, fallback la { }...");
+            var jStart = fullText.IndexOf('{');
+            var jEnd = fullText.LastIndexOf('}');
+            if (jStart == -1 || jEnd == -1)
+                throw new Exception($"Nu s-a găsit JSON. Preview: {fullText[..Math.Min(300, fullText.Length)]}");
+            jsonContent = fullText[jStart..(jEnd + 1)];
         }
 
-        // Fallback — s-a oprit fără motiv clar
-        if (iterText.Length > 0)
-            break;
+        await DeserializeAndSave(jsonContent);
     }
-
-    var fullText = fullTextBuilder.ToString();
-    Console.WriteLine($"\n[DEBUG] Text total acumulat: {fullText.Length} chars");
-
-    // Extrage JSON dintre markeri
-    const string startMarker = "===TRIP_JSON_START===";
-    const string endMarker   = "===TRIP_JSON_END===";
-
-    var startIdx = fullText.IndexOf(startMarker, StringComparison.OrdinalIgnoreCase);
-    var endIdx   = fullText.IndexOf(endMarker,   StringComparison.OrdinalIgnoreCase);
-
-    string jsonContent;
-    if (startIdx != -1 && endIdx != -1 && endIdx > startIdx)
-    {
-        jsonContent = fullText[(startIdx + startMarker.Length)..endIdx].Trim();
-    }
-    else
-    {
-        // Fallback: primul { până la ultimul }
-        Console.WriteLine("[DEBUG] Markeri negăsiți, fallback la { }...");
-        var jStart = fullText.IndexOf('{');
-        var jEnd   = fullText.LastIndexOf('}');
-        if (jStart == -1 || jEnd == -1)
-            throw new Exception($"Nu s-a găsit JSON. Preview: {fullText[..Math.Min(300, fullText.Length)]}");
-        jsonContent = fullText[jStart..(jEnd + 1)];
-    }
-
-    await DeserializeAndSave(jsonContent);
-}
 
     private async Task DeserializeAndSave(string jsonContent)
     {
@@ -501,8 +501,8 @@ public async Task GenerateTripAsync(AiTripPlanner aiTripPlanner)
         await _tripService.CreateTrip(tripRequest);
         Console.WriteLine($"[DEBUG] Trip '{tripRequest.Title}' creat cu succes!");
     }
-    
-  
+
+
     public async Task<string> ExtractAsync(string prompt)
     {
         var body = new
@@ -545,7 +545,7 @@ public async Task GenerateTripAsync(AiTripPlanner aiTripPlanner)
             .GetProperty("content")
             .GetString();
     }
-    
+
     private async Task FillCoordsAsync(TripRequest trip)
     {
         foreach (var tl in trip.Timelines)
