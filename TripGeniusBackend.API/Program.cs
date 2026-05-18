@@ -30,6 +30,7 @@ using TripGeniusBackend.Infrastructure.Persistence.Hubs;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
 using Npgsql;
+using Pgvector.Npgsql;
 using QuestPDF.Infrastructure;
 using WebPush;
 
@@ -89,6 +90,7 @@ if (string.IsNullOrWhiteSpace(connectionString))
 }
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
 dataSourceBuilder.ConnectionStringBuilder.SearchPath = "public"; // setare explicită, nu din connection string
+dataSourceBuilder.UseVector();
 var dataSource = dataSourceBuilder.Build();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
