@@ -15,6 +15,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using Scalar.AspNetCore;
 using TripGeniusBackend.Application.Interfaces;
+using TripGeniusBackend.Application.Interfaces.Services;
 using TripGeniusBackend.Application.UseCases;
 using TripGeniusBackend.Infrastructure.Persistence;
 using TripGeniusBackend.Infrastructure.Persistence.Repositories;
@@ -120,18 +121,24 @@ builder.Services.AddMemoryCache();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ITripService, TripService>();
+builder.Services.AddScoped<IOffroadTripService, OffroadTripService>();
 builder.Services.AddScoped<IBugService, BugService>();
 builder.Services.AddScoped<IAiChatService, AiChatService>();
 builder.Services.AddHttpClient<ResendClient>();
 builder.Services.AddHttpClient<IAiService,AiService>(client =>
 {
-    client.Timeout = TimeSpan.FromMinutes(10); 
+    client.Timeout = TimeSpan.FromMinutes(15); 
 });
 builder.Services.AddHttpClient<IEmbeddingService, EmbeddingService>();
 builder.Services.AddHttpClient<GeocodingService>(client =>
 {
     client.DefaultRequestHeaders.Add("User-Agent", "TripGenius/1.0");
     client.DefaultRequestHeaders.Add("Accept-Language", "ro");
+});
+builder.Services.AddHttpClient<ILinkValidationService, LinkValidationService>(client =>
+{
+    client.Timeout = TimeSpan.FromMinutes(1);
+    client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
 });
 builder.Services.Configure<ResendClientOptions>( o =>
 {
@@ -146,10 +153,15 @@ builder.Services.AddScoped<IAiMemoryRepository, AiMemoryRepository>();
 builder.Services.AddScoped<IAiChatRepository,AiChatRepository>();
 builder.Services.AddScoped<IBugRepository,BugRepository>();
 builder.Services.AddScoped<ITripRepository,TripRepository>();
+builder.Services.AddScoped<IOffroadTripRepository, OffroadTripRepository>();
+builder.Services.AddScoped<IOffroadMessageRepository, OffroadMessageRepository>();
 builder.Services.AddScoped<IRefreshTokenRepository,RefreshTokenRepository>();
 builder.Services.AddScoped<IMessageRepository, MessageRepository>();
 builder.Services.AddScoped<IUserQueryService, UserQueryService>();
 builder.Services.AddScoped<ITripQueryService, TripQueryService>();
+builder.Services.AddScoped<IOffroadTripQueryService, OffroadTripQueryService>();
+builder.Services.AddScoped<IOffroadMessageQueryService, OffroadMessageQueryService>();
+builder.Services.AddScoped<IGpxService, GpxService>();
 builder.Services.AddScoped<IAiChatQueryService, AiChatQueryService>();
 builder.Services.AddScoped<IBugQueryService, BugQueryService>();
 builder.Services.AddScoped<IMessageQueryService, MessageQueryService>();
@@ -306,6 +318,7 @@ app.MapHealthChecks("/health", new HealthCheckOptions
 });
 app.MapControllers().RequireRateLimiting("global");
 app.MapHub<TripChatHub>("/hubs/trip-chat");
+app.MapHub<OffroadTripChatHub>("/hubs/offroad-trip-chat");
 app.MapHub<AiChatHub>("/hubs/ai-chat");
 
 using var scope = app.Services.CreateScope();

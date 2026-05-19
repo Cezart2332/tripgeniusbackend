@@ -65,7 +65,7 @@ public class AiControllerIntegrationTests : IClassFixture<TripGeniusWebApplicati
                 // Register mocked IAiService
                 var mockAiService = new Mock<IAiService>();
                 mockAiService.Setup(s => s.GenerateTripAsync(It.IsAny<AiTripPlanner>()))
-                    .Returns(Task.CompletedTask);
+                    .ReturnsAsync(1);
                 services.AddSingleton<IAiService>(mockAiService.Object);
             });
         }).CreateClient();

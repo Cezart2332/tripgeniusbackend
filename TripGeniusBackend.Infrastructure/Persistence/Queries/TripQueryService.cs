@@ -89,10 +89,10 @@ public class TripQueryService : ITripQueryService
             Members = t.Members.Select(member => new TripMemberResponse
             {
                 Id = member.UserId,
-                Role = member.Role.ToString(),
+                Role = member.Role.ToString().ToLowerInvariant(),
                 Username = member.User.Profile.Username,
                 AvatarUrl = member.User.Profile.ProfileURL,
-                MemberStatus = member.MemberStatus.ToString()
+                MemberStatus = member.MemberStatus.ToString().ToLowerInvariant()
             }).ToList(),
             History = t.History.OrderBy(th => th.Date).Select(history => new TripHistoryResponse
             {

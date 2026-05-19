@@ -1,11 +1,13 @@
 ﻿using System.Security.Claims;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using Pgvector;
 using TripGeniusBackend.Application.Interfaces;
 using TripGeniusBackend.Application.Interfaces.Queries;
 using TripGeniusBackend.Application.Interfaces.Repositories;
+using TripGeniusBackend.Application.Interfaces.Services;
 using TripGeniusBackend.Domain.Entities;
 using TripGeniusBackend.Infrastructure.Persistence.Repositories;
 
@@ -19,9 +21,12 @@ public class AiChatHub : Hub
     private readonly IEmbeddingService _embeddingService;
     private readonly IAiChatQueryService _aiChatQueryService;
     private readonly IAiService _aiService;
+    private readonly ILinkValidationService _linkValidationService;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ITripRepository _tripRepository;
-    public AiChatHub(IAiChatRepository aiChatRepository,IUserRepository userRepository,IAiChatQueryService aiChatQueryService, IAiService aiService, IAiMemoryRepository aiMemoryRepository, IEmbeddingService embeddingService,IServiceScopeFactory scopeFactory, ITripRepository tripRepository)
+    private readonly IOffroadTripRepository _offroadTripRepository;
+
+    public AiChatHub(IAiChatRepository aiChatRepository, IUserRepository userRepository, IAiChatQueryService aiChatQueryService, IAiService aiService, IAiMemoryRepository aiMemoryRepository, IEmbeddingService embeddingService, IServiceScopeFactory scopeFactory, ITripRepository tripRepository, IOffroadTripRepository offroadTripRepository, ILinkValidationService linkValidationService)
     {
         _aiChatRepository = aiChatRepository;
         _userRepository = userRepository;
@@ -31,18 +36,122 @@ public class AiChatHub : Hub
         _embeddingService = embeddingService;
         _scopeFactory = scopeFactory;
         _tripRepository = tripRepository;
+        _offroadTripRepository = offroadTripRepository;
+        _linkValidationService = linkValidationService;
     }
 
     public async Task JoinAiChat()
     {
         var userId = int.Parse(Context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
         await Groups.AddToGroupAsync(Context.ConnectionId, userId.ToString());
-        
+
     }
     public async Task LeaveAiChat()
     {
         var userId = int.Parse(Context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, userId.ToString());
+    }
+
+    /// <summary>
+    /// Heuristic to determine if the query needs external web search.
+    /// Returns false for app-only questions (profile, settings, navigation, support, user's trips).
+    /// </summary>
+    private static bool NeedsExternalWebSearch(string content, string tripsContext, string memoryContext)
+    {
+        var lower = content.ToLowerInvariant();
+
+        // Real-world travel queries always need live web data
+        var externalKeywords = new[]
+        {
+            "hotel", "apartament", "apartment", "accommodation", "cazare", "hostel", "airbnb",
+            "booking", "restaurant", "mâncare", "mancare", "food", "café", "cafe", "bar ",
+            "attraction", "museum", "muzeu", "weather", "vreme", "preț", "pret", "price",
+            "€", " eur", "ron", "noapte", "/night", "per night", "vizit", "visit", "things to do"
+        };
+        if (externalKeywords.Any(k => lower.Contains(k)))
+            return true;
+
+        // App-only keywords that don't need web search
+        var appOnlyKeywords = new[]
+        {
+            "profile", "settings", "password", "email", "account", "login", "logout",
+            "how do i", "how to", "how can i", "where is", "navigation", "menu",
+            "support", "help", "bug", "feature", "tutorial", "guide", "app", "button",
+            "click", "page", "screen", "tab", "notification", "invite"
+        };
+
+        // If the user is asking about their own trips and we have context, skip web
+        var tripIndicators = new[] { "my trip", "trip id", "my offroad", "my route" };
+        bool asksAboutOwnTrips = tripIndicators.Any(k => lower.Contains(k)) && !string.IsNullOrWhiteSpace(tripsContext);
+
+        // If it's a pure app/support question with no real-world entities, skip web
+        bool isAppOnly = appOnlyKeywords.Any(k => lower.Contains(k)) &&
+                         !lower.Contains("price") &&
+                         !lower.Contains("open now") &&
+                         !lower.Contains("hours") &&
+                         !lower.Contains("weather") &&
+                         !lower.Contains("restaurant") &&
+                         !lower.Contains("hotel") &&
+                         !lower.Contains("attraction");
+
+        // If we have rich context (memories or trips) and no external indicators, lean toward no web
+        bool hasRichContext = !string.IsNullOrWhiteSpace(tripsContext) || !string.IsNullOrWhiteSpace(memoryContext);
+
+        if (asksAboutOwnTrips) return false;
+        if (isAppOnly) return false;
+        if (hasRichContext && lower.Split(' ').Length < 5) return false; // Short queries with context likely app-only
+
+        return true; // Default to using tools for safety
+    }
+
+    /// <summary>
+    /// Parses [LINKS:...] from the AI response, validates URLs, repairs broken ones,
+    /// and returns sanitized text + validated links.
+    /// </summary>
+    private async Task<(string sanitizedText, List<LinkCard> links)> PostProcessLinksAsync(string rawResponse)
+    {
+        // Match [LINKS:{"links":[{"title":"...","url":"..."}]}]
+        var match = Regex.Match(rawResponse, @"\[LINKS:(.*?)\]+\s*$", RegexOptions.Singleline);
+        if (!match.Success)
+            return (rawResponse.Trim(), []);
+
+        try
+        {
+            var jsonStr = match.Groups[1].Value.Trim();
+            using var doc = JsonDocument.Parse(jsonStr);
+            var rawLinks = new List<LinkCard>();
+
+            // AI may return "title"/"url" or "Title"/"Url" — handle both
+            if (doc.RootElement.TryGetProperty("links", out var linksElement))
+            {
+                foreach (var item in linksElement.EnumerateArray())
+                {
+                    var title = (item.TryGetProperty("title", out var t) ? t.GetString()
+                               : item.TryGetProperty("Title", out var t2) ? t2.GetString() : "") ?? "";
+                    var url = (item.TryGetProperty("url", out var u) ? u.GetString()
+                             : item.TryGetProperty("Url", out var u2) ? u2.GetString() : "") ?? "";
+                    if (!string.IsNullOrWhiteSpace(title) && !string.IsNullOrWhiteSpace(url))
+                    {
+                        rawLinks.Add(new LinkCard { Title = title, Url = url });
+                    }
+                }
+            }
+
+            // Validate and repair (max 2 replacements, as per service caps)
+            var validatedLinks = await _linkValidationService.ValidateAndRepairLinksAsync(rawLinks);
+
+            // Remove original [LINKS:...] block from text
+            var sanitizedText = Regex.Replace(rawResponse, @"\[LINKS:.*$", "", RegexOptions.Singleline).Trim();
+
+            return (sanitizedText, validatedLinks);
+        }
+        catch (Exception ex)
+        {
+            // On parse error, strip the malformed block and return empty links
+            Console.WriteLine($"[DEBUG] Failed to parse LINKS block: {ex.Message}");
+            var fallbackText = Regex.Replace(rawResponse, @"\[LINKS:.*$", "", RegexOptions.Singleline).Trim();
+            return (fallbackText, []);
+        }
     }
 
     public async Task SendAiMessage(string content, bool preferProfile)
@@ -61,12 +170,21 @@ public class AiChatHub : Hub
         await _aiChatRepository.Create(aiRequest);
         await _aiChatRepository.SaveChanges();
         await Clients.Group(userId.ToString()).SendAsync("StartAiMessage");
+        await Clients.Group(userId.ToString()).SendAsync("StatusUpdate", AiActivityStatus.Analyzing);
         string fullResponse = "";
         var lastMessages = await _aiChatQueryService.GetShortTermMemory(userId);
-        var querryEmbedding = await _embeddingService.GetEmbedding(content);
-        var tripEmbedding = await _embeddingService.GetEmbedding($"{content} {string.Join(", ", preferences.Tags)} {preferences.MaxGroupSize}");
+
+        // Parallelize embeddings (HttpClient) but run DB queries sequentially (DbContext is not thread-safe)
+        var queryEmbedTask = _embeddingService.GetEmbedding(content);
+        var tripEmbedTask = _embeddingService.GetEmbedding($"{content} {string.Join(", ", preferences.Tags)} {preferences.MaxGroupSize}");
+        await Task.WhenAll(queryEmbedTask, tripEmbedTask);
+        var querryEmbedding = await queryEmbedTask;
+        var tripEmbedding = await tripEmbedTask;
+
+        // Run vector searches sequentially to avoid DbContext concurrency issues
         var memories = await _aiMemoryRepository.SearchSimilarAsync(querryEmbedding, userId);
         var trips = await _tripRepository.SearchSimilarAsync(tripEmbedding, userId);
+        var offroadTrips = await _offroadTripRepository.SearchSimilarAsync(tripEmbedding, userId);
         var memoryContext = memories.Any()
             ? "WHAT YOU KNOW ABOUT THIS USER:\n" + string.Join("\n", memories.Select(m => $"- {m.Content}"))
             : "";
@@ -86,7 +204,18 @@ public class AiChatHub : Hub
                 return $"- Id:{t.Id} | {t.Title} | {t.Description} | Tags: {string.Join(",", t.Tags)} | Price: {t.Price}\n  {timelinesText}";
             }))
             : "";
-        
+
+        var offroadTripsContext = offroadTrips.Any()
+            ? "\nRELEVANT OFFROAD TRIPS FROM THE APP:\n" + string.Join("\n", offroadTrips.Select(t =>
+            {
+                var routesText = string.Join("\n  ", t.Routes.Select(r =>
+                    $"Day {r.StartDay}-{r.EndDay}: {r.Name} | {r.DistanceMeters}m | {r.ElevationGainMeters}m elev | {r.Source} | Note: {r.Note}"));
+                return $"- Id:{t.Id} | {t.Title} | {t.Description} | Tags: {string.Join(",", t.Tags)} | Price: {t.Price}\n  {routesText}";
+            }))
+            : "";
+
+        tripsContext += offroadTripsContext;
+
         var preferencesContext = "";
         if (preferProfile)
         {
@@ -95,16 +224,37 @@ public class AiChatHub : Hub
                 : "";
         }
 
+        // Heuristic: skip web tools for app-only questions (profile, settings, navigation, support, or user's trips)
+        bool needsExternalWeb = NeedsExternalWebSearch(content, tripsContext, memoryContext);
 
-        await _aiService.AskAsync(lastMessages, content,memoryContext,tripsContext,preferencesContext, async (chunk) =>
+        await _aiService.AskAsync(lastMessages, content, memoryContext, tripsContext, preferencesContext, async (chunk) =>
         {
             fullResponse += chunk;
             await Clients.Group(userId.ToString()).SendAsync("ReceiveAiChunk", chunk);
-        });
+        },
+        async (status) =>
+        {
+            await Clients.Group(userId.ToString()).SendAsync("StatusUpdate", status);
+        }, useTools: needsExternalWeb);
+
+        // Post-process: validate and repair links
+        var (sanitizedText, validatedLinks) = await PostProcessLinksAsync(fullResponse);
+        var sanitizedResponse = sanitizedText;
+        if (validatedLinks.Count > 0)
+        {
+            var camelCaseOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+            var linksJson = JsonSerializer.Serialize(new { links = validatedLinks }, camelCaseOptions);
+            sanitizedResponse += $"\n\n[LINKS:{linksJson}]";
+        }
+
+        // Emit finalized message (client will replace the streamed version)
+        await Clients.Group(userId.ToString()).SendAsync("FinalizeAiMessage", sanitizedResponse);
         await Clients.Group(userId.ToString()).SendAsync("EndAiMessage");
+
+        // Save sanitized response to database
         var aiResponse = new AiChatHistory
         {
-            Content = fullResponse,
+            Content = sanitizedResponse,
             UserId = userId,
             Role = "assistant",
             SentAt = DateTime.UtcNow

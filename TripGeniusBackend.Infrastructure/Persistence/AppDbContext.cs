@@ -27,6 +27,11 @@ public class AppDbContext : DbContext
 
     
     public DbSet<Bug> Bugs { get; set; }
+    public DbSet<OffroadTrip> OffroadTrips { get; set; }
+    public DbSet<OffroadRoute> OffroadRoutes { get; set; }
+    public DbSet<OffroadTripMember> OffroadTripMembers { get; set; }
+    public DbSet<OffroadTripHistory> OffroadTripHistories { get; set; }
+    public DbSet<OffroadMessage> OffroadMessages { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -44,6 +49,12 @@ public class AppDbContext : DbContext
                 .HasConversion(
                     v => v != null ? v.ToString() : null,
                     v => v != null ? new Pgvector.Vector(v) : null);
+
+            modelBuilder.Entity<OffroadTrip>()
+                .Property(t => t.Embedding)
+                .HasConversion(
+                    v => v != null ? v.ToString() : null,
+                    v => v != null ? new Pgvector.Vector(v) : null);
         }
         else
         {
@@ -51,13 +62,25 @@ public class AppDbContext : DbContext
             modelBuilder.HasPostgresExtension("vector");
             modelBuilder.Entity<AiMemory>()
                 .Property(m => m.Embedding)
-                .HasColumnType("vector(2048)"); 
+                .HasColumnType("vector(2048)");
+            modelBuilder.Entity<OffroadTrip>()
+                .Property(t => t.Embedding)
+                .HasColumnType("vector(2048)");
         }
         modelBuilder.Entity<Trip>().Property(t => t.Status).HasConversion<string>();
         modelBuilder.Entity<TripMember>().Property(t => t.MemberStatus).HasConversion<string>();
         modelBuilder.Entity<TripMember>().Property(t => t.Role).HasConversion<string>();
         modelBuilder.Entity<TripActivity>().Property(a => a.Type).HasConversion<string>();
         modelBuilder.Entity<Bug>().Property(b => b.Status).HasConversion<string>();
+        modelBuilder.Entity<OffroadTrip>().Property(t => t.Status).HasConversion<string>();
+        modelBuilder.Entity<OffroadTripMember>().Property(t => t.MemberStatus).HasConversion<string>();
+        modelBuilder.Entity<OffroadTripMember>().Property(t => t.Role).HasConversion<string>();
+        modelBuilder.Entity<OffroadTripMember>().Property(t => t.Type).HasConversion<string>();
+        modelBuilder.Entity<OffroadRoute>().Property(r => r.Source).HasConversion<string>();
+        modelBuilder.Entity<OffroadRoute>().Property(r => r.TrackGeoJson).HasColumnType("jsonb");
+        modelBuilder.Entity<OffroadTrip>().HasMany(t => t.Routes).WithOne(r => r.OffroadTrip).HasForeignKey(r => r.OffroadTripId);
+        modelBuilder.Entity<OffroadTrip>().HasMany(t => t.Members).WithOne(m => m.OffroadTrip).HasForeignKey(m => m.OffroadTripId);
+        modelBuilder.Entity<OffroadTrip>().HasMany(t => t.History).WithOne(h => h.OffroadTrip).HasForeignKey(h => h.OffroadTripId);
 
     }
 

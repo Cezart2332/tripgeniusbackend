@@ -36,7 +36,7 @@ public class TripService : ITripService
         _pdfService = pdfService;
     }
 
-    public async Task CreateTrip(TripRequest tripRequest)
+    public async Task<int> CreateTrip(TripRequest tripRequest)
     {
         if(tripRequest == null) throw new ArgumentNullException("Trip request is null");
         int userId = _jwtService.GetUserId();
@@ -60,6 +60,10 @@ public class TripService : ITripService
         {
             string url = await _fileUploader.UploadFile(tripRequest.ImageStream,Path.GetExtension(tripRequest.ImageFileName),"trip", trip.Id);
             trip.SetImageUrl(url);
+        }
+        else if (!string.IsNullOrWhiteSpace(tripRequest.ImageUrl))
+        {
+            trip.SetImageUrl(tripRequest.ImageUrl);
         }
         await _tripRepository.SaveChanges();
         _ = Task.Run(async () =>
@@ -87,6 +91,7 @@ public class TripService : ITripService
             freshTrip.UpdateEmbedding(new Vector(embedding));
             await tripRepository.SaveChanges();
         });
+        return trip.Id;
     }
 
 

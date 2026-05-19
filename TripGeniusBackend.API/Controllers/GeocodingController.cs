@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using TripGeniusBackend.Application.DTOs.Geocoding;
 using TripGeniusBackend.Infrastructure.Persistence.Services;
 
 namespace TripGeniusBackend.API.Controllers;
@@ -23,5 +25,32 @@ public class GeocodingController : ControllerBase
 
         var results = await _geocodingService.SearchAsync(query, limit);
         return Ok(results);
+    }
+
+    [Authorize]
+    [HttpPost("elevation")]
+    public async Task<IActionResult> LookupElevation([FromBody] ElevationLookupRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (request.Points == null || request.Points.Count < 2)
+            return BadRequest(new { message = "At least two points are required." });
+
+        foreach (var p in request.Points)
+        {
+            if (p.Lat is < -90 or > 90 || double.IsNaN(p.Lat) || double.IsInfinity(p.Lat))
+                return BadRequest(new { message = "Invalid latitude." });
+            if (p.Lng is < -180 or > 180 || double.IsNaN(p.Lng) || double.IsInfinity(p.Lng))
+                return BadRequest(new { message = "Invalid longitude." });
+        }
+
+        try
+        {
+            var elevations = await _geocodingService.LookupElevationsAsync(request.Points, cancellationToken);
+            return Ok(new ElevationLookupResponse { Elevations = elevations });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 }

@@ -32,7 +32,15 @@ public class AiController : ControllerBase
     public async Task<IActionResult> GenerateTrip(AiTripPlanner aiTripPlanner)
     {
 
-        await _aiService.GenerateTripAsync(aiTripPlanner);
-        return Ok(new { message = "Trip generated successfully" });
+        var tripId = await _aiService.GenerateTripAsync(aiTripPlanner);
+        return Ok(new { tripId, message = "Trip generated successfully" });
+    }
+
+    [Authorize]
+    [HttpPost("generate-offroad-trip")]
+    public async Task<IActionResult> GenerateOffroadTrip(AiOffroadTripPlanner planner)
+    {
+        var tripId = await _aiService.GenerateOffroadTripAsync(planner);
+        return Ok(new { tripId, message = "Offroad trip generated successfully" });
     }
 }
