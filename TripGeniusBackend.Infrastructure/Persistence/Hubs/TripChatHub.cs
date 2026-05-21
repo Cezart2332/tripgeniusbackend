@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using TripGeniusBackend.Application.DTOs.Trip;
 using TripGeniusBackend.Application.Interfaces;
 using TripGeniusBackend.Application.Interfaces.Repositories;
+using TripGeniusBackend.Application.Interfaces.Services;
 using TripGeniusBackend.Domain.Entities;
 
 public class TripChatHub : Hub
@@ -34,6 +35,11 @@ public class TripChatHub : Hub
         var userId = int.Parse(Context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
         var user = await userRepository.GetUserById(userId);
         if (user == null) throw new KeyNotFoundException("User not found");
+
+        var moderation = scope.ServiceProvider.GetRequiredService<IContentModerationService>();
+        var moderationResult = await moderation.CheckTextAsync(content);
+        if (moderationResult.IsBlocked)
+            throw new HubException(moderationResult.Reason ?? "Message not allowed.");
 
         var message = Message.Create(content, "", DateTime.UtcNow, userId, tripId);
 

@@ -1,9 +1,11 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TripGeniusBackend.API.DTOs;
+using TripGeniusBackend.API.Helpers;
 using TripGeniusBackend.Application.DTOs.Notifications;
 using TripGeniusBackend.Application.DTOs.User;
 using TripGeniusBackend.Application.Interfaces;
+using TripGeniusBackend.Application.Interfaces.Services;
 using TripGeniusBackend.Application.Interfaces.UseCases;
 
 namespace TripGeniusBackend.API.Controllers;
@@ -13,10 +15,12 @@ namespace TripGeniusBackend.API.Controllers;
 public class UserController : ControllerBase
 {
     private readonly IUserService _userService;
+    private readonly IContentModerationService _moderation;
 
-    public UserController(IUserService userService)
+    public UserController(IUserService userService, IContentModerationService moderation)
     {
         _userService = userService;
+        _moderation = moderation;
     }
 
     [Authorize]
@@ -30,16 +34,29 @@ public class UserController : ControllerBase
     [HttpPut("update")]
     public async Task<IActionResult> Update([FromForm] InitialUpdateRequest initialUpdateRequest)
     {
-        var updateRequest = new UpdateRequest
+        var (avatarStream, avatarRejection) = await ImageModeration.ValidateUploadAsync(
+            initialUpdateRequest.Avatar, _moderation);
+        if (avatarRejection != null)
+            return avatarRejection;
+
+        try
         {
-            Username = initialUpdateRequest.Username,
-            Description = initialUpdateRequest.Description,
-            AvatarFileName = initialUpdateRequest.Avatar?.FileName, 
-            AvatarStream = initialUpdateRequest.Avatar != null ?  initialUpdateRequest.Avatar.OpenReadStream() : null,
-            Tags = initialUpdateRequest.Tags,
-            GroupSize = initialUpdateRequest.GroupSize,
-        };
-        return Ok(await _userService.Update(updateRequest));
+            var updateRequest = new UpdateRequest
+            {
+                Username = initialUpdateRequest.Username,
+                Description = initialUpdateRequest.Description,
+                AvatarFileName = initialUpdateRequest.Avatar?.FileName,
+                AvatarStream = avatarStream,
+                Tags = initialUpdateRequest.Tags,
+                GroupSize = initialUpdateRequest.GroupSize,
+            };
+            return Ok(await _userService.Update(updateRequest));
+        }
+        finally
+        {
+            if (avatarStream != null)
+                await avatarStream.DisposeAsync();
+        }
     }
 
     [Authorize]

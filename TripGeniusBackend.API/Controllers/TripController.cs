@@ -1,7 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TripGeniusBackend.API.DTOs;
+using TripGeniusBackend.API.Helpers;
 using TripGeniusBackend.Application.DTOs.Trip;
+using TripGeniusBackend.Application.Interfaces.Services;
 using TripGeniusBackend.Application.Interfaces.UseCases;
 
 namespace TripGeniusBackend.API.Controllers;
@@ -11,10 +13,12 @@ namespace TripGeniusBackend.API.Controllers;
 public class TripController : ControllerBase
 {
     private readonly ITripService _tripService;
+    private readonly IContentModerationService _moderation;
 
-    public TripController(ITripService tripService)
+    public TripController(ITripService tripService, IContentModerationService moderation)
     {
         _tripService = tripService;
+        _moderation = moderation;
     }
 
     [Authorize]
@@ -23,23 +27,35 @@ public class TripController : ControllerBase
     {
         try
         {
+            var (imageStream, imageRejection) = await ImageModeration.ValidateUploadAsync(
+                initialTripRequest.Image, _moderation);
+            if (imageRejection != null)
+                return imageRejection;
 
-            var tripRequest = new TripRequest
+            try
             {
-                Title = initialTripRequest.Title,
-                Description = initialTripRequest.Description,
-                ImageStream = initialTripRequest.Image?.OpenReadStream(),
-                ImageFileName = initialTripRequest.Image?.FileName,
-                StartingDate = initialTripRequest.StartingDate,
-                EndingDate = initialTripRequest.EndingDate,
-                Status = initialTripRequest.Status,
-                Tags = initialTripRequest.Tags,
-                MaxParticipants = initialTripRequest.MaxParticipants,
-                Price = initialTripRequest.Price,
-                Timelines = initialTripRequest.Timelines
-            };
-            await _tripService.CreateTrip(tripRequest);
-            return Ok();
+                var tripRequest = new TripRequest
+                {
+                    Title = initialTripRequest.Title,
+                    Description = initialTripRequest.Description,
+                    ImageStream = imageStream,
+                    ImageFileName = initialTripRequest.Image?.FileName,
+                    StartingDate = initialTripRequest.StartingDate,
+                    EndingDate = initialTripRequest.EndingDate,
+                    Status = initialTripRequest.Status,
+                    Tags = initialTripRequest.Tags,
+                    MaxParticipants = initialTripRequest.MaxParticipants,
+                    Price = initialTripRequest.Price,
+                    Timelines = initialTripRequest.Timelines
+                };
+                await _tripService.CreateTrip(tripRequest);
+                return Ok();
+            }
+            finally
+            {
+                if (imageStream != null)
+                    await imageStream.DisposeAsync();
+            }
         }
         catch (ArgumentException e)
         {
@@ -107,21 +123,34 @@ public class TripController : ControllerBase
     [HttpPatch("update-trip")]
     public async Task<IActionResult> UpdateTrip([FromForm] InitialTripUpdateRequest initialTripUpdateRequest)
     {
-        var updateTripRequest = new UpdateTripRequest
+        var (imageStream, imageRejection) = await ImageModeration.ValidateUploadAsync(
+            initialTripUpdateRequest.Image, _moderation);
+        if (imageRejection != null)
+            return imageRejection;
+
+        try
         {
-            Id = initialTripUpdateRequest.Id,
-            Title = initialTripUpdateRequest.Title,
-            Description = initialTripUpdateRequest.Description,
-            ImageStream = initialTripUpdateRequest.Image?.OpenReadStream(),
-            ImageFileName = initialTripUpdateRequest.Image?.FileName,
-            StartingDate = initialTripUpdateRequest.StartingDate,
-            EndingDate = initialTripUpdateRequest.EndingDate,
-            Status = initialTripUpdateRequest.Status,
-            Tags = initialTripUpdateRequest.Tags,
-            MaxParticipants = initialTripUpdateRequest.MaxParticipants,
-        };
-        await _tripService.UpdateTrip(updateTripRequest);
-        return Ok();
+            var updateTripRequest = new UpdateTripRequest
+            {
+                Id = initialTripUpdateRequest.Id,
+                Title = initialTripUpdateRequest.Title,
+                Description = initialTripUpdateRequest.Description,
+                ImageStream = imageStream,
+                ImageFileName = initialTripUpdateRequest.Image?.FileName,
+                StartingDate = initialTripUpdateRequest.StartingDate,
+                EndingDate = initialTripUpdateRequest.EndingDate,
+                Status = initialTripUpdateRequest.Status,
+                Tags = initialTripUpdateRequest.Tags,
+                MaxParticipants = initialTripUpdateRequest.MaxParticipants,
+            };
+            await _tripService.UpdateTrip(updateTripRequest);
+            return Ok();
+        }
+        finally
+        {
+            if (imageStream != null)
+                await imageStream.DisposeAsync();
+        }
     }
     [Authorize]
     [HttpGet("timeline/{tripId}/{timelineId}")]

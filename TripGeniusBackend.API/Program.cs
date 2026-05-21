@@ -20,6 +20,7 @@ using TripGeniusBackend.Application.UseCases;
 using TripGeniusBackend.Infrastructure.Persistence;
 using TripGeniusBackend.Infrastructure.Persistence.Repositories;
 using TripGeniusBackend.Infrastructure.Persistence.Services;
+using TripGeniusBackend.Infrastructure.Services;
 using TripGeniusBackend.Application.Interfaces.Queries;
 using TripGeniusBackend.Application.Interfaces.Repositories;
 using TripGeniusBackend.Application.Interfaces.UseCases;
@@ -116,6 +117,9 @@ builder.Services.Configure<OpenTripMapSettings>(
 builder.Services.Configure<VapidSettings>(
     builder.Configuration.GetSection("Vapid")
 );
+builder.Services.Configure<ModerationSettings>(
+    builder.Configuration.GetSection("Moderation")
+);
 //Application
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -134,6 +138,13 @@ builder.Services.AddHttpClient<GeocodingService>(client =>
 {
     client.DefaultRequestHeaders.Add("User-Agent", "TripGenius/1.0");
     client.DefaultRequestHeaders.Add("Accept-Language", "ro");
+});
+builder.Services.AddHttpClient<IContentModerationService, ContentModerationService>((sp, client) =>
+{
+    var settings = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<ModerationSettings>>().Value;
+    if (!string.IsNullOrWhiteSpace(settings.BaseUrl))
+        client.BaseAddress = new Uri(settings.BaseUrl.TrimEnd('/') + "/");
+    client.Timeout = TimeSpan.FromSeconds(Math.Clamp(settings.TimeoutSeconds, 1, 30));
 });
 builder.Services.AddSingleton<ILinkValidationService, LinkValidationService>();
 builder.Services.Configure<ResendClientOptions>( o =>

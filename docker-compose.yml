@@ -1,4 +1,25 @@
 services:
+  moderation:
+    build:
+      context: ../tripgeniusimagechecker
+      dockerfile: Dockerfile
+    container_name: tripgenius-moderation
+    restart: always
+    mem_limit: 2560m
+    expose:
+      - "8000"
+    environment:
+      - TOKENIZERS_PARALLELISM=false
+      - OMP_NUM_THREADS=2
+      - NSFW_THRESHOLD=0.85
+      - TOXIC_THRESHOLD=0.5
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 180s
+
   backend:
     build:
       context: .
@@ -24,8 +45,13 @@ services:
       - 'OpenTripMap__ApiKey=${OPENTRIPMAP_API_KEY}'
       - 'Cors__AllowedOrigins__0=${FRONTEND_URL}'
       - 'UPLOADS_PATH=${UPLOADS_PATH:-/app/wwwroot}'
+      - 'Moderation__BaseUrl=http://moderation:8000'
+      - 'Moderation__Enabled=${MODERATION_ENABLED:-true}'
+      - 'Moderation__TimeoutSeconds=${MODERATION_TIMEOUT_SECONDS:-3}'
     depends_on:
       db:
+        condition: service_healthy
+      moderation:
         condition: service_healthy
     volumes:
       - uploads_data:${UPLOADS_PATH:-/app/wwwroot}

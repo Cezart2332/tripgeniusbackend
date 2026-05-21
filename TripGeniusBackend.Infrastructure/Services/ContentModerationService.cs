@@ -1,0 +1,140 @@
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text.Json.Serialization;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using TripGeniusBackend.Application.Interfaces.Services;
+using TripGeniusBackend.Application.Settings;
+
+namespace TripGeniusBackend.Infrastructure.Services;
+
+public class ContentModerationService : IContentModerationService
+{
+    private readonly HttpClient _httpClient;
+    private readonly ModerationSettings _settings;
+    private readonly ILogger<ContentModerationService> _logger;
+
+    public ContentModerationService(
+        HttpClient httpClient,
+        IOptions<ModerationSettings> settings,
+        ILogger<ContentModerationService> logger)
+    {
+        _httpClient = httpClient;
+        _settings = settings.Value;
+        _logger = logger;
+    }
+
+    public async Task<ModerationCheckResult> CheckTextAsync(
+        string text,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_settings.Enabled || !_settings.TextEnabled || string.IsNullOrWhiteSpace(text))
+            return new ModerationCheckResult(false);
+
+        try
+        {
+            using var response = await _httpClient.PostAsJsonAsync(
+                "/text-check",
+                new { text },
+                cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning(
+                    "Text moderation returned {StatusCode}; allowing content (fail-open).",
+                    (int)response.StatusCode);
+                return new ModerationCheckResult(false);
+            }
+
+            var result = await response.Content.ReadFromJsonAsync<TextCheckResponse>(cancellationToken);
+            if (result is null)
+                return new ModerationCheckResult(false);
+
+            if (result.IsToxic)
+            {
+                _logger.LogInformation("Text blocked by moderation. Scores: {@Scores}", result.Scores);
+                return new ModerationCheckResult(
+                    true,
+                    "Your message was flagged as inappropriate. Please revise and try again.");
+            }
+
+            return new ModerationCheckResult(false);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "Text moderation unavailable; allowing content (fail-open).");
+            return new ModerationCheckResult(false);
+        }
+    }
+
+    public async Task<ModerationCheckResult> CheckImageAsync(
+        Stream imageStream,
+        string? contentType,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_settings.Enabled || !_settings.ImageEnabled)
+            return new ModerationCheckResult(false);
+
+        try
+        {
+            if (imageStream.CanSeek)
+                imageStream.Position = 0;
+
+            using var content = new MultipartFormDataContent();
+            var streamContent = new StreamContent(imageStream);
+            streamContent.Headers.ContentType = new MediaTypeHeaderValue(
+                string.IsNullOrWhiteSpace(contentType) ? "image/jpeg" : contentType);
+            content.Add(streamContent, "file", "upload.jpg");
+
+            using var response = await _httpClient.PostAsync("/image-check", content, cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning(
+                    "Image moderation returned {StatusCode}; allowing upload (fail-open).",
+                    (int)response.StatusCode);
+                return new ModerationCheckResult(false);
+            }
+
+            var result = await response.Content.ReadFromJsonAsync<ImageCheckResponse>(cancellationToken);
+            if (result is null)
+                return new ModerationCheckResult(false);
+
+            if (result.IsNsfw)
+            {
+                _logger.LogInformation(
+                    "Image blocked by moderation. NSFW score {Score} (threshold {Threshold}).",
+                    result.NsfwScore,
+                    _settings.NsfwThreshold);
+                return new ModerationCheckResult(
+                    true,
+                    "This image was flagged as inappropriate and cannot be uploaded.");
+            }
+
+            return new ModerationCheckResult(false);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "Image moderation unavailable; allowing upload (fail-open).");
+            return new ModerationCheckResult(false);
+        }
+    }
+
+    private sealed class ImageCheckResponse
+    {
+        [JsonPropertyName("is_nsfw")]
+        public bool IsNsfw { get; set; }
+
+        [JsonPropertyName("nsfw_score")]
+        public double NsfwScore { get; set; }
+    }
+
+    private sealed class TextCheckResponse
+    {
+        [JsonPropertyName("is_toxic")]
+        public bool IsToxic { get; set; }
+
+        [JsonPropertyName("scores")]
+        public Dictionary<string, double>? Scores { get; set; }
+    }
+}

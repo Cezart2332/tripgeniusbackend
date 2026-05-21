@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using TripGeniusBackend.Application.DTOs.Trip;
 using TripGeniusBackend.Application.Interfaces;
 using TripGeniusBackend.Application.Interfaces.Repositories;
+using TripGeniusBackend.Application.Interfaces.Services;
 using TripGeniusBackend.Domain.Entities;
 
 namespace TripGeniusBackend.Infrastructure.Persistence.Hubs;
@@ -29,6 +30,11 @@ public class OffroadTripChatHub : Hub
         var userId = int.Parse(Context.User!.FindFirst(ClaimTypes.NameIdentifier)!.Value);
         var user = await userRepository.GetUserById(userId);
         if (user == null) throw new KeyNotFoundException("User not found");
+
+        var moderation = scope.ServiceProvider.GetRequiredService<IContentModerationService>();
+        var moderationResult = await moderation.CheckTextAsync(content);
+        if (moderationResult.IsBlocked)
+            throw new HubException(moderationResult.Reason ?? "Message not allowed.");
 
         var message = OffroadMessage.Create(content, "", DateTime.UtcNow, userId, tripId);
         await messageRepository.AddMessage(message);

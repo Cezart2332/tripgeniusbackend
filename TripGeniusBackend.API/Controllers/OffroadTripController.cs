@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TripGeniusBackend.API.DTOs;
+using TripGeniusBackend.API.Helpers;
 using TripGeniusBackend.Application.DTOs.OffroadTrip;
 using TripGeniusBackend.Application.DTOs.Trip;
+using TripGeniusBackend.Application.Interfaces.Services;
 using TripGeniusBackend.Application.Interfaces.UseCases;
 
 namespace TripGeniusBackend.API.Controllers;
@@ -12,8 +14,15 @@ namespace TripGeniusBackend.API.Controllers;
 public class OffroadTripController : ControllerBase
 {
     private readonly IOffroadTripService _offroadTripService;
+    private readonly IContentModerationService _moderation;
 
-    public OffroadTripController(IOffroadTripService offroadTripService) => _offroadTripService = offroadTripService;
+    public OffroadTripController(
+        IOffroadTripService offroadTripService,
+        IContentModerationService moderation)
+    {
+        _offroadTripService = offroadTripService;
+        _moderation = moderation;
+    }
 
     [Authorize]
     [HttpPost("create-offroad-trip")]
@@ -21,21 +30,33 @@ public class OffroadTripController : ControllerBase
     {
         try
         {
-            await _offroadTripService.CreateTrip(new OffroadTripRequest
+            var (imageStream, imageRejection) = await ImageModeration.ValidateUploadAsync(request.Image, _moderation);
+            if (imageRejection != null)
+                return imageRejection;
+
+            try
             {
-                Title = request.Title,
-                Description = request.Description,
-                ImageStream = request.Image?.OpenReadStream(),
-                ImageFileName = request.Image?.FileName,
-                StartingDate = request.StartingDate,
-                EndingDate = request.EndingDate,
-                Status = request.Status,
-                Tags = request.Tags,
-                MaxParticipants = request.MaxParticipants,
-                Price = request.Price,
-                Routes = request.Routes ?? new List<OffroadRouteRequest>()
-            });
-            return Ok();
+                await _offroadTripService.CreateTrip(new OffroadTripRequest
+                {
+                    Title = request.Title,
+                    Description = request.Description,
+                    ImageStream = imageStream,
+                    ImageFileName = request.Image?.FileName,
+                    StartingDate = request.StartingDate,
+                    EndingDate = request.EndingDate,
+                    Status = request.Status,
+                    Tags = request.Tags,
+                    MaxParticipants = request.MaxParticipants,
+                    Price = request.Price,
+                    Routes = request.Routes ?? new List<OffroadRouteRequest>()
+                });
+                return Ok();
+            }
+            finally
+            {
+                if (imageStream != null)
+                    await imageStream.DisposeAsync();
+            }
         }
         catch (ArgumentException e)
         {
@@ -60,21 +81,33 @@ public class OffroadTripController : ControllerBase
     [HttpPatch("update-offroad-trip")]
     public async Task<IActionResult> UpdateTrip([FromForm] InitialOffroadTripUpdateRequest request)
     {
-        var updated = await _offroadTripService.UpdateTrip(new UpdateOffroadTripRequest
+        var (imageStream, imageRejection) = await ImageModeration.ValidateUploadAsync(request.Image, _moderation);
+        if (imageRejection != null)
+            return imageRejection;
+
+        try
         {
-            Id = request.Id,
-            Title = request.Title,
-            Description = request.Description,
-            ImageStream = request.Image?.OpenReadStream(),
-            ImageFileName = request.Image?.FileName,
-            StartingDate = request.StartingDate,
-            EndingDate = request.EndingDate,
-            Status = request.Status,
-            Tags = request.Tags,
-            MaxParticipants = request.MaxParticipants,
-            Price = request.Price
-        });
-        return Ok(updated);
+            var updated = await _offroadTripService.UpdateTrip(new UpdateOffroadTripRequest
+            {
+                Id = request.Id,
+                Title = request.Title,
+                Description = request.Description,
+                ImageStream = imageStream,
+                ImageFileName = request.Image?.FileName,
+                StartingDate = request.StartingDate,
+                EndingDate = request.EndingDate,
+                Status = request.Status,
+                Tags = request.Tags,
+                MaxParticipants = request.MaxParticipants,
+                Price = request.Price
+            });
+            return Ok(updated);
+        }
+        finally
+        {
+            if (imageStream != null)
+                await imageStream.DisposeAsync();
+        }
     }
 
     [Authorize]
