@@ -11,9 +11,12 @@ services:
     environment:
       - TOKENIZERS_PARALLELISM=false
       - OMP_NUM_THREADS=2
-      - NSFW_THRESHOLD=0.45
+      - NSFW_THRESHOLD=0.35
+      - IMAGE_MAX_EDGE=640
       - TOXIC_THRESHOLD=0.72
       - SHORT_TEXT_TOXIC_THRESHOLD=0.88
+      - LOG_LEVEL=INFO
+      - MODERATION_LOG_PREVIEW=true
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)"]
       interval: 15s
@@ -48,7 +51,8 @@ services:
       - 'UPLOADS_PATH=${UPLOADS_PATH:-/app/wwwroot}'
       - 'Moderation__BaseUrl=http://moderation:8000'
       - 'Moderation__Enabled=${MODERATION_ENABLED:-true}'
-      - 'Moderation__TimeoutSeconds=${MODERATION_TIMEOUT_SECONDS:-3}'
+      - 'Moderation__TimeoutSeconds=${MODERATION_TIMEOUT_SECONDS:-15}'
+      - 'Moderation__FailOpen=${MODERATION_FAIL_OPEN:-false}'
     depends_on:
       db:
         condition: service_healthy

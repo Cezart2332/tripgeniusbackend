@@ -12,7 +12,12 @@ public class ModerationSettings
 
     public int TimeoutSeconds { get; set; } = 15;
 
-    public double NsfwThreshold { get; set; } = 0.85;
+    /// <summary>
+    /// When false, failed moderation HTTP calls block content instead of allowing it through.
+    /// </summary>
+    public bool FailOpen { get; set; } = true;
+
+    public double NsfwThreshold { get; set; } = 0.35;
 
     public double ToxicThreshold { get; set; } = 0.5;
 }

@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using TripGeniusBackend.Application.Helpers;
 using TripGeniusBackend.Application.Interfaces.Services;
 using TripGeniusBackend.Application.Settings;
 
@@ -31,6 +32,14 @@ public class ContentModerationService : IContentModerationService
         if (!_settings.Enabled || !_settings.TextEnabled || string.IsNullOrWhiteSpace(text))
             return new ModerationCheckResult(false);
 
+        if (ProfanityFilter.ContainsProfanity(text))
+        {
+            _logger.LogInformation("Text blocked by local profanity filter.");
+            return new ModerationCheckResult(
+                true,
+                "Your message was flagged as inappropriate. Please revise and try again.");
+        }
+
         try
         {
             using var response = await _httpClient.PostAsJsonAsync(
@@ -41,18 +50,26 @@ public class ContentModerationService : IContentModerationService
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogWarning(
-                    "Text moderation returned {StatusCode}; allowing content (fail-open).",
-                    (int)response.StatusCode);
-                return new ModerationCheckResult(false);
+                    "Text moderation returned {StatusCode}; {Policy}.",
+                    (int)response.StatusCode,
+                    _settings.FailOpen ? "allowing content (fail-open)" : "blocking content");
+                return _settings.FailOpen
+                    ? new ModerationCheckResult(false)
+                    : new ModerationCheckResult(true, "Moderation service unavailable. Try again later.");
             }
 
             var result = await response.Content.ReadFromJsonAsync<TextCheckResponse>(cancellationToken);
             if (result is null)
                 return new ModerationCheckResult(false);
 
+            _logger.LogInformation(
+                "Text moderation: decision={Decision} is_toxic={IsToxic} scores={@Scores}",
+                result.Decision ?? (result.IsToxic ? "block" : "allow"),
+                result.IsToxic,
+                result.Scores);
+
             if (result.IsToxic)
             {
-                _logger.LogInformation("Text blocked by moderation. Scores: {@Scores}", result.Scores);
                 return new ModerationCheckResult(
                     true,
                     "Your message was flagged as inappropriate. Please revise and try again.");
@@ -62,8 +79,13 @@ public class ContentModerationService : IContentModerationService
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException)
         {
-            _logger.LogWarning(ex, "Text moderation unavailable; allowing content (fail-open).");
-            return new ModerationCheckResult(false);
+            _logger.LogWarning(
+                ex,
+                "Text moderation unavailable; {Policy}.",
+                _settings.FailOpen ? "allowing content (fail-open)" : "blocking content");
+            return _settings.FailOpen
+                ? new ModerationCheckResult(false)
+                : new ModerationCheckResult(true, "Moderation service unavailable. Try again later.");
         }
     }
 
@@ -91,22 +113,28 @@ public class ContentModerationService : IContentModerationService
             {
                 var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
                 _logger.LogWarning(
-                    "Image moderation returned {StatusCode}; allowing upload (fail-open). Body: {Body}",
+                    "Image moderation returned {StatusCode}; {Policy}. Body: {Body}",
                     (int)response.StatusCode,
+                    _settings.FailOpen ? "allowing upload (fail-open)" : "blocking upload",
                     errorBody);
-                return new ModerationCheckResult(false);
+                return _settings.FailOpen
+                    ? new ModerationCheckResult(false)
+                    : new ModerationCheckResult(true, "Image moderation is unavailable. Try again later.");
             }
 
             var result = await response.Content.ReadFromJsonAsync<ImageCheckResponse>(cancellationToken);
             if (result is null)
                 return new ModerationCheckResult(false);
 
+            _logger.LogInformation(
+                "Image moderation: decision={Decision} is_nsfw={IsNsfw} nsfw_score={Score} debug={@Debug}",
+                result.Decision ?? (result.IsNsfw ? "block" : "allow"),
+                result.IsNsfw,
+                result.NsfwScore,
+                result.Debug);
+
             if (result.IsNsfw)
             {
-                _logger.LogInformation(
-                    "Image blocked by moderation. NSFW score {Score} (threshold {Threshold}).",
-                    result.NsfwScore,
-                    _settings.NsfwThreshold);
                 return new ModerationCheckResult(
                     true,
                     "This image was flagged as inappropriate and cannot be uploaded.");
@@ -116,8 +144,14 @@ public class ContentModerationService : IContentModerationService
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException)
         {
-            _logger.LogWarning(ex, "Image moderation unavailable; allowing upload (fail-open).");
-            return new ModerationCheckResult(false);
+            _logger.LogWarning(
+                ex,
+                "Image moderation unavailable; {Policy}. BaseUrl={BaseUrl}",
+                _settings.FailOpen ? "allowing upload (fail-open)" : "blocking upload",
+                _settings.BaseUrl);
+            return _settings.FailOpen
+                ? new ModerationCheckResult(false)
+                : new ModerationCheckResult(true, "Image moderation is unavailable. Try again later.");
         }
         finally
         {
@@ -155,6 +189,12 @@ public class ContentModerationService : IContentModerationService
 
         [JsonPropertyName("nsfw_score")]
         public double NsfwScore { get; set; }
+
+        [JsonPropertyName("decision")]
+        public string? Decision { get; set; }
+
+        [JsonPropertyName("debug")]
+        public Dictionary<string, object>? Debug { get; set; }
     }
 
     private sealed class TextCheckResponse
@@ -164,5 +204,11 @@ public class ContentModerationService : IContentModerationService
 
         [JsonPropertyName("scores")]
         public Dictionary<string, double>? Scores { get; set; }
+
+        [JsonPropertyName("decision")]
+        public string? Decision { get; set; }
+
+        [JsonPropertyName("debug")]
+        public Dictionary<string, object>? Debug { get; set; }
     }
 }
