@@ -135,11 +135,7 @@ builder.Services.AddHttpClient<GeocodingService>(client =>
     client.DefaultRequestHeaders.Add("User-Agent", "TripGenius/1.0");
     client.DefaultRequestHeaders.Add("Accept-Language", "ro");
 });
-builder.Services.AddHttpClient<ILinkValidationService, LinkValidationService>(client =>
-{
-    client.Timeout = TimeSpan.FromMinutes(1);
-    client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
-});
+builder.Services.AddSingleton<ILinkValidationService, LinkValidationService>();
 builder.Services.Configure<ResendClientOptions>( o =>
 {
     o.ApiToken = builder.Configuration["Email:ResendApiKey"]!;

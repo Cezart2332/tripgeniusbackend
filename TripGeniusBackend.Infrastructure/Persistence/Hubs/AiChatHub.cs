@@ -3,13 +3,14 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Pgvector;
 using TripGeniusBackend.Application.Interfaces;
 using TripGeniusBackend.Application.Interfaces.Queries;
 using TripGeniusBackend.Application.Interfaces.Repositories;
 using TripGeniusBackend.Application.Interfaces.Services;
 using TripGeniusBackend.Domain.Entities;
-using TripGeniusBackend.Infrastructure.Persistence.Repositories;
+using TripGeniusBackend.Infrastructure.Persistence.Services;
 
 namespace TripGeniusBackend.Infrastructure.Persistence.Hubs;
 
@@ -25,8 +26,20 @@ public class AiChatHub : Hub
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ITripRepository _tripRepository;
     private readonly IOffroadTripRepository _offroadTripRepository;
+    private readonly ILogger<AiChatHub> _logger;
 
-    public AiChatHub(IAiChatRepository aiChatRepository, IUserRepository userRepository, IAiChatQueryService aiChatQueryService, IAiService aiService, IAiMemoryRepository aiMemoryRepository, IEmbeddingService embeddingService, IServiceScopeFactory scopeFactory, ITripRepository tripRepository, IOffroadTripRepository offroadTripRepository, ILinkValidationService linkValidationService)
+    public AiChatHub(
+        IAiChatRepository aiChatRepository,
+        IUserRepository userRepository,
+        IAiChatQueryService aiChatQueryService,
+        IAiService aiService,
+        IAiMemoryRepository aiMemoryRepository,
+        IEmbeddingService embeddingService,
+        IServiceScopeFactory scopeFactory,
+        ITripRepository tripRepository,
+        IOffroadTripRepository offroadTripRepository,
+        ILinkValidationService linkValidationService,
+        ILogger<AiChatHub> logger)
     {
         _aiChatRepository = aiChatRepository;
         _userRepository = userRepository;
@@ -38,6 +51,7 @@ public class AiChatHub : Hub
         _tripRepository = tripRepository;
         _offroadTripRepository = offroadTripRepository;
         _linkValidationService = linkValidationService;
+        _logger = logger;
     }
 
     public async Task JoinAiChat()
@@ -52,65 +66,39 @@ public class AiChatHub : Hub
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, userId.ToString());
     }
 
+    private static int CountNumberedRecommendations(string text) =>
+        Regex.Matches(text, @"(?m)^\s*\d+\.\s+").Count;
+
     /// <summary>
-    /// Heuristic to determine if the query needs external web search.
-    /// Returns false for app-only questions (profile, settings, navigation, support, user's trips).
+    /// Keeps intro text and only the first N numbered list items so body matches verified link cards.
     /// </summary>
-    private static bool NeedsExternalWebSearch(string content, string tripsContext, string memoryContext)
+    private static string TrimExcessNumberedRecommendations(string text, int keepCount)
     {
-        var lower = content.ToLowerInvariant();
+        if (keepCount <= 0) return text;
 
-        // Real-world travel queries always need live web data
-        var externalKeywords = new[]
+        var lines = text.Split('\n');
+        var result = new List<string>();
+        var numberedKept = 0;
+
+        foreach (var line in lines)
         {
-            "hotel", "apartament", "apartment", "accommodation", "cazare", "hostel", "airbnb",
-            "booking", "restaurant", "mâncare", "mancare", "food", "café", "cafe", "bar ",
-            "attraction", "museum", "muzeu", "weather", "vreme", "preț", "pret", "price",
-            "€", " eur", "ron", "noapte", "/night", "per night", "vizit", "visit", "things to do"
-        };
-        if (externalKeywords.Any(k => lower.Contains(k)))
-            return true;
+            if (Regex.IsMatch(line, @"^\s*\d+\.\s+"))
+            {
+                numberedKept++;
+                if (numberedKept > keepCount)
+                    continue;
+            }
+            result.Add(line);
+        }
 
-        // App-only keywords that don't need web search
-        var appOnlyKeywords = new[]
-        {
-            "profile", "settings", "password", "email", "account", "login", "logout",
-            "how do i", "how to", "how can i", "where is", "navigation", "menu",
-            "support", "help", "bug", "feature", "tutorial", "guide", "app", "button",
-            "click", "page", "screen", "tab", "notification", "invite"
-        };
-
-        // If the user is asking about their own trips and we have context, skip web
-        var tripIndicators = new[] { "my trip", "trip id", "my offroad", "my route" };
-        bool asksAboutOwnTrips = tripIndicators.Any(k => lower.Contains(k)) && !string.IsNullOrWhiteSpace(tripsContext);
-
-        // If it's a pure app/support question with no real-world entities, skip web
-        bool isAppOnly = appOnlyKeywords.Any(k => lower.Contains(k)) &&
-                         !lower.Contains("price") &&
-                         !lower.Contains("open now") &&
-                         !lower.Contains("hours") &&
-                         !lower.Contains("weather") &&
-                         !lower.Contains("restaurant") &&
-                         !lower.Contains("hotel") &&
-                         !lower.Contains("attraction");
-
-        // If we have rich context (memories or trips) and no external indicators, lean toward no web
-        bool hasRichContext = !string.IsNullOrWhiteSpace(tripsContext) || !string.IsNullOrWhiteSpace(memoryContext);
-
-        if (asksAboutOwnTrips) return false;
-        if (isAppOnly) return false;
-        if (hasRichContext && lower.Split(' ').Length < 5) return false; // Short queries with context likely app-only
-
-        return true; // Default to using tools for safety
+        return string.Join('\n', result).TrimEnd();
     }
 
     /// <summary>
-    /// Parses [LINKS:...] from the AI response, validates URLs, repairs broken ones,
-    /// and returns sanitized text + validated links.
+    /// Parses [LINKS:...] and applies lightweight sanitization (model verifies via web_fetch).
     /// </summary>
     private async Task<(string sanitizedText, List<LinkCard> links)> PostProcessLinksAsync(string rawResponse)
     {
-        // Match [LINKS:{"links":[{"title":"...","url":"..."}]}]
         var match = Regex.Match(rawResponse, @"\[LINKS:(.*?)\]+\s*$", RegexOptions.Singleline);
         if (!match.Success)
             return (rawResponse.Trim(), []);
@@ -137,18 +125,19 @@ public class AiChatHub : Hub
                 }
             }
 
-            // Validate and repair (max 2 replacements, as per service caps)
             var validatedLinks = await _linkValidationService.ValidateAndRepairLinksAsync(rawLinks);
-
-            // Remove original [LINKS:...] block from text
             var sanitizedText = Regex.Replace(rawResponse, @"\[LINKS:.*$", "", RegexOptions.Singleline).Trim();
+            var numberedInText = CountNumberedRecommendations(sanitizedText);
+
+            if (numberedInText > validatedLinks.Count && validatedLinks.Count > 0)
+                sanitizedText = TrimExcessNumberedRecommendations(sanitizedText, validatedLinks.Count);
 
             return (sanitizedText, validatedLinks);
         }
         catch (Exception ex)
         {
             // On parse error, strip the malformed block and return empty links
-            Console.WriteLine($"[DEBUG] Failed to parse LINKS block: {ex.Message}");
+            _logger.LogWarning(ex, "Failed to parse LINKS block");
             var fallbackText = Regex.Replace(rawResponse, @"\[LINKS:.*$", "", RegexOptions.Singleline).Trim();
             return (fallbackText, []);
         }
@@ -224,20 +213,31 @@ public class AiChatHub : Hub
                 : "";
         }
 
-        // Heuristic: skip web tools for app-only questions (profile, settings, navigation, support, or user's trips)
-        bool needsExternalWeb = NeedsExternalWebSearch(content, tripsContext, memoryContext);
-
+        var inLinksBlock = false;
         await _aiService.AskAsync(lastMessages, content, memoryContext, tripsContext, preferencesContext, async (chunk) =>
         {
             fullResponse += chunk;
-            await Clients.Group(userId.ToString()).SendAsync("ReceiveAiChunk", chunk);
+            if (inLinksBlock)
+                return;
+
+            var visibleChunk = chunk;
+            var linksStart = chunk.IndexOf("[LINKS:", StringComparison.Ordinal);
+            if (linksStart >= 0)
+            {
+                inLinksBlock = true;
+                visibleChunk = chunk[..linksStart];
+            }
+
+            var clientChunk = AiResponseSanitizer.StripInternalPrompts(visibleChunk);
+            if (!string.IsNullOrEmpty(clientChunk))
+                await Clients.Group(userId.ToString()).SendAsync("ReceiveAiChunk", clientChunk);
         },
         async (status) =>
         {
             await Clients.Group(userId.ToString()).SendAsync("StatusUpdate", status);
-        }, useTools: needsExternalWeb);
+        });
 
-        // Post-process: validate and repair links
+        fullResponse = AiResponseSanitizer.StripInternalPrompts(fullResponse);
         var (sanitizedText, validatedLinks) = await PostProcessLinksAsync(fullResponse);
         var sanitizedResponse = sanitizedText;
         if (validatedLinks.Count > 0)
@@ -299,7 +299,6 @@ public class AiChatHub : Hub
                                       """ + userMessage + """Respond ONLY with valid JSON, no extra text, no markdown:{"memories": ["memory1", "memory2"]""";
             string extractedJson = "";
             extractedJson = await _aiService.ExtractAsync(extractionPrompt);
-            Console.WriteLine($"Extracted JSON: {extractedJson}");
 
             extractedJson = extractedJson
                 .Replace("```json", "")
@@ -317,7 +316,6 @@ public class AiChatHub : Hub
                     .ToList();
             }
 
-            Console.WriteLine($"Memories to save: {memoryTexts.Count}");
 
             foreach (var text in memoryTexts)
             {
@@ -335,7 +333,7 @@ public class AiChatHub : Hub
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error: {ex.Message}");
+                    _logger.LogWarning(ex, "Failed to save AI memory");
                 }
             }
     }
