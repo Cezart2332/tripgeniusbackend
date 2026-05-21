@@ -696,12 +696,12 @@ public class AiService : IAiService
 
     private const double MaxOffroadRouteDistanceMeters = 20_000;
 
-    private string BuildOffroadPrompt(AiOffroadTripPlanner p) => $$"""
+    private string BuildOffroadPrompt(AiOffroadTripPlanner p) => $"""
       You are an outdoor adventure and hiking trail planning expert. Think out loud as you plan — search the web for real hiking trails, footpaths, mountain paths, and scenic walking/running routes.
       Analyze the description and respond in that language.
 
       CURRENT CONTEXT:
-      - Current Year: {{DateTime.UtcNow.Year}}
+      - Current Year: {DateTime.UtcNow.Year}
 
       USER PREFERENCES:
       - Trip Request: {p.Description}
