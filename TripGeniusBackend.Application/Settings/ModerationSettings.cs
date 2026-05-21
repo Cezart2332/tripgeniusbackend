@@ -10,7 +10,7 @@ public class ModerationSettings
 
     public string BaseUrl { get; set; } = "http://moderation:8000";
 
-    public int TimeoutSeconds { get; set; } = 3;
+    public int TimeoutSeconds { get; set; } = 15;
 
     public double NsfwThreshold { get; set; } = 0.85;
 

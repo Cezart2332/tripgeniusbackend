@@ -11,8 +11,9 @@ services:
     environment:
       - TOKENIZERS_PARALLELISM=false
       - OMP_NUM_THREADS=2
-      - NSFW_THRESHOLD=0.85
-      - TOXIC_THRESHOLD=0.5
+      - NSFW_THRESHOLD=0.45
+      - TOXIC_THRESHOLD=0.72
+      - SHORT_TEXT_TOXIC_THRESHOLD=0.88
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)"]
       interval: 15s

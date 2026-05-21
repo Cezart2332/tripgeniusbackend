@@ -4,6 +4,7 @@ namespace TripGeniusBackend.Application.Interfaces.Repositories;
 
 public interface IMessageRepository
 {
-    public Task AddMessage(Message message);
-    public Task SaveChanges();
+    Task AddMessage(Message message);
+    Task<bool> DeleteMessageAsync(int messageId);
+    Task SaveChanges();
 }

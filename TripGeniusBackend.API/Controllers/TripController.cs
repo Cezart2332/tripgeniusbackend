@@ -32,6 +32,12 @@ public class TripController : ControllerBase
             if (imageRejection != null)
                 return imageRejection;
 
+            var textRejection = await TextModeration.ValidateFieldsAsync(
+                _moderation,
+                TextModeration.CollectTripCreate(initialTripRequest));
+            if (textRejection != null)
+                return textRejection;
+
             try
             {
                 var tripRequest = new TripRequest
@@ -128,6 +134,12 @@ public class TripController : ControllerBase
         if (imageRejection != null)
             return imageRejection;
 
+        var textRejection = await TextModeration.ValidateFieldsAsync(
+            _moderation,
+            TextModeration.CollectTripUpdate(initialTripUpdateRequest));
+        if (textRejection != null)
+            return textRejection;
+
         try
         {
             var updateTripRequest = new UpdateTripRequest
@@ -164,6 +176,12 @@ public class TripController : ControllerBase
     [HttpPatch("update-timeline")]
     public async Task<IActionResult> UpdateTimeline(UpdateTimelineRequest updateTimelineRequest)
     {
+        var textRejection = await TextModeration.ValidateFieldsAsync(
+            _moderation,
+            TextModeration.CollectTimeline(updateTimelineRequest));
+        if (textRejection != null)
+            return textRejection;
+
         var timeline = await _tripService.UpdateTimeline(updateTimelineRequest);
         return Ok(timeline);
     }
@@ -179,6 +197,12 @@ public class TripController : ControllerBase
     [HttpPost("add-timeline")]
     public async Task<IActionResult> AddTimeline(UpdateTimelineRequest updateTimelineRequest)
     {
+        var textRejection = await TextModeration.ValidateFieldsAsync(
+            _moderation,
+            TextModeration.CollectTimeline(updateTimelineRequest));
+        if (textRejection != null)
+            return textRejection;
+
         await _tripService.AddTimeline(updateTimelineRequest);
         return Ok();
     }

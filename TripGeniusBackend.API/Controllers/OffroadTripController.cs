@@ -34,6 +34,12 @@ public class OffroadTripController : ControllerBase
             if (imageRejection != null)
                 return imageRejection;
 
+            var textRejection = await TextModeration.ValidateFieldsAsync(
+                _moderation,
+                TextModeration.CollectOffroadCreate(request));
+            if (textRejection != null)
+                return textRejection;
+
             try
             {
                 await _offroadTripService.CreateTrip(new OffroadTripRequest
@@ -85,6 +91,12 @@ public class OffroadTripController : ControllerBase
         if (imageRejection != null)
             return imageRejection;
 
+        var textRejection = await TextModeration.ValidateFieldsAsync(
+            _moderation,
+            TextModeration.CollectOffroadUpdate(request));
+        if (textRejection != null)
+            return textRejection;
+
         try
         {
             var updated = await _offroadTripService.UpdateTrip(new UpdateOffroadTripRequest
@@ -112,8 +124,16 @@ public class OffroadTripController : ControllerBase
 
     [Authorize]
     [HttpPost("add-route")]
-    public async Task<IActionResult> AddRoute([FromBody] UpdateOffroadRouteRequest request) =>
-        Ok(await _offroadTripService.AddRoute(request));
+    public async Task<IActionResult> AddRoute([FromBody] UpdateOffroadRouteRequest request)
+    {
+        var textRejection = await TextModeration.ValidateFieldsAsync(
+            _moderation,
+            TextModeration.CollectRoute(request));
+        if (textRejection != null)
+            return textRejection;
+
+        return Ok(await _offroadTripService.AddRoute(request));
+    }
 
     [Authorize]
     [HttpPost("import-route-gpx")]
@@ -121,6 +141,13 @@ public class OffroadTripController : ControllerBase
         [FromForm] string name, [FromForm] string note, IFormFile gpx)
     {
         if (gpx == null || gpx.Length == 0) return BadRequest(new { message = "GPX file is required." });
+
+        var textRejection = await TextModeration.ValidateFieldsAsync(
+            _moderation,
+            TextModeration.CollectRouteGpxForm(name, note));
+        if (textRejection != null)
+            return textRejection;
+
         await using var stream = gpx.OpenReadStream();
         var route = await _offroadTripService.AddRoute(new UpdateOffroadRouteRequest
         {
@@ -140,13 +167,27 @@ public class OffroadTripController : ControllerBase
 
     [Authorize]
     [HttpPatch("update-route")]
-    public async Task<IActionResult> UpdateRoute([FromBody] UpdateOffroadRouteRequest request) =>
-        Ok(await _offroadTripService.UpdateRoute(request));
+    public async Task<IActionResult> UpdateRoute([FromBody] UpdateOffroadRouteRequest request)
+    {
+        var textRejection = await TextModeration.ValidateFieldsAsync(
+            _moderation,
+            TextModeration.CollectRoute(request));
+        if (textRejection != null)
+            return textRejection;
+
+        return Ok(await _offroadTripService.UpdateRoute(request));
+    }
 
     [Authorize]
     [HttpPatch("update-route-gpx")]
     public async Task<IActionResult> UpdateRouteGpx([FromForm] UpdateOffroadRouteRequest request, IFormFile gpx)
     {
+        var textRejection = await TextModeration.ValidateFieldsAsync(
+            _moderation,
+            TextModeration.CollectRoute(request));
+        if (textRejection != null)
+            return textRejection;
+
         await using var stream = gpx.OpenReadStream();
         return Ok(await _offroadTripService.UpdateRoute(request, stream));
     }

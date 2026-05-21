@@ -18,6 +18,16 @@ public class MessageRepository : IMessageRepository
         return Task.CompletedTask;
     }
 
+    public async Task<bool> DeleteMessageAsync(int messageId)
+    {
+        var message = await _context.Messages.FindAsync(messageId);
+        if (message is null)
+            return false;
+
+        _context.Messages.Remove(message);
+        return true;
+    }
+
     public async Task SaveChanges()
     {
         await _context.SaveChangesAsync();

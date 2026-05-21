@@ -89,9 +89,11 @@ public class ContentModerationService : IContentModerationService
 
             if (!response.IsSuccessStatusCode)
             {
+                var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
                 _logger.LogWarning(
-                    "Image moderation returned {StatusCode}; allowing upload (fail-open).",
-                    (int)response.StatusCode);
+                    "Image moderation returned {StatusCode}; allowing upload (fail-open). Body: {Body}",
+                    (int)response.StatusCode,
+                    errorBody);
                 return new ModerationCheckResult(false);
             }
 

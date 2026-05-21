@@ -4,16 +4,19 @@ using Microsoft.Extensions.DependencyInjection;
 using TripGeniusBackend.Application.DTOs.Trip;
 using TripGeniusBackend.Application.Interfaces;
 using TripGeniusBackend.Application.Interfaces.Repositories;
-using TripGeniusBackend.Application.Interfaces.Services;
 using TripGeniusBackend.Domain.Entities;
+
+namespace TripGeniusBackend.Infrastructure.Persistence.Hubs;
 
 public class TripChatHub : Hub
 {
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IHubContext<TripChatHub> _hubContext;
 
-    public TripChatHub(IServiceScopeFactory scopeFactory)
+    public TripChatHub(IServiceScopeFactory scopeFactory, IHubContext<TripChatHub> hubContext)
     {
         _scopeFactory = scopeFactory;
+        _hubContext = hubContext;
     }
 
     public async Task JoinTrip(int tripId)
@@ -32,14 +35,10 @@ public class TripChatHub : Hub
         var userRepository = scope.ServiceProvider.GetRequiredService<IUserRepository>();
         var messageRepository = scope.ServiceProvider.GetRequiredService<IMessageRepository>();
 
-        var userId = int.Parse(Context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+        var userId = int.Parse(Context.User!.FindFirst(ClaimTypes.NameIdentifier)!.Value);
         var user = await userRepository.GetUserById(userId);
-        if (user == null) throw new KeyNotFoundException("User not found");
-
-        var moderation = scope.ServiceProvider.GetRequiredService<IContentModerationService>();
-        var moderationResult = await moderation.CheckTextAsync(content);
-        if (moderationResult.IsBlocked)
-            throw new HubException(moderationResult.Reason ?? "Message not allowed.");
+        if (user == null)
+            throw new KeyNotFoundException("User not found");
 
         var message = Message.Create(content, "", DateTime.UtcNow, userId, tripId);
 
@@ -56,6 +55,23 @@ public class TripChatHub : Hub
             ProfileUrl = user.Profile.ProfileURL
         };
 
-        await Clients.Group($"trip-{tripId}").SendAsync("ReceiveMessage", messageResponse);
+        var groupName = $"trip-{tripId}";
+        await Clients.Group(groupName).SendAsync("ReceiveMessage", messageResponse);
+
+        ChatModerationRunner.Schedule(
+            _scopeFactory,
+            _hubContext,
+            groupName,
+            message.Id,
+            userId,
+            content,
+            async (services, messageId) =>
+            {
+                var repo = services.GetRequiredService<IMessageRepository>();
+                var deleted = await repo.DeleteMessageAsync(messageId);
+                if (deleted)
+                    await repo.SaveChanges();
+                return deleted;
+            });
     }
 }

@@ -18,6 +18,7 @@ using TripGeniusBackend.Application.Interfaces;
 using TripGeniusBackend.Application.Interfaces.Services;
 using TripGeniusBackend.Application.UseCases;
 using TripGeniusBackend.Infrastructure.Persistence;
+using TripGeniusBackend.Infrastructure.Persistence.Hubs;
 using TripGeniusBackend.Infrastructure.Persistence.Repositories;
 using TripGeniusBackend.Infrastructure.Persistence.Services;
 using TripGeniusBackend.Infrastructure.Services;

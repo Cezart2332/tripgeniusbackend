@@ -39,6 +39,12 @@ public class UserController : ControllerBase
         if (avatarRejection != null)
             return avatarRejection;
 
+        var textRejection = await TextModeration.ValidateFieldsAsync(
+            _moderation,
+            TextModeration.CollectProfileUpdate(initialUpdateRequest));
+        if (textRejection != null)
+            return textRejection;
+
         try
         {
             var updateRequest = new UpdateRequest

@@ -2,9 +2,8 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using TripGeniusBackend.Application.DTOs.Trip;
-using TripGeniusBackend.Application.Interfaces;
 using TripGeniusBackend.Application.Interfaces.Repositories;
-using TripGeniusBackend.Application.Interfaces.Services;
+using TripGeniusBackend.Application.Interfaces;
 using TripGeniusBackend.Domain.Entities;
 
 namespace TripGeniusBackend.Infrastructure.Persistence.Hubs;
@@ -12,8 +11,13 @@ namespace TripGeniusBackend.Infrastructure.Persistence.Hubs;
 public class OffroadTripChatHub : Hub
 {
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IHubContext<OffroadTripChatHub> _hubContext;
 
-    public OffroadTripChatHub(IServiceScopeFactory scopeFactory) => _scopeFactory = scopeFactory;
+    public OffroadTripChatHub(IServiceScopeFactory scopeFactory, IHubContext<OffroadTripChatHub> hubContext)
+    {
+        _scopeFactory = scopeFactory;
+        _hubContext = hubContext;
+    }
 
     public async Task JoinOffroadTrip(int tripId) =>
         await Groups.AddToGroupAsync(Context.ConnectionId, $"offroad-{tripId}");
@@ -29,12 +33,8 @@ public class OffroadTripChatHub : Hub
 
         var userId = int.Parse(Context.User!.FindFirst(ClaimTypes.NameIdentifier)!.Value);
         var user = await userRepository.GetUserById(userId);
-        if (user == null) throw new KeyNotFoundException("User not found");
-
-        var moderation = scope.ServiceProvider.GetRequiredService<IContentModerationService>();
-        var moderationResult = await moderation.CheckTextAsync(content);
-        if (moderationResult.IsBlocked)
-            throw new HubException(moderationResult.Reason ?? "Message not allowed.");
+        if (user == null)
+            throw new KeyNotFoundException("User not found");
 
         var message = OffroadMessage.Create(content, "", DateTime.UtcNow, userId, tripId);
         await messageRepository.AddMessage(message);
@@ -50,6 +50,23 @@ public class OffroadTripChatHub : Hub
             ProfileUrl = user.Profile.ProfileURL
         };
 
-        await Clients.Group($"offroad-{tripId}").SendAsync("ReceiveMessage", messageResponse);
+        var groupName = $"offroad-{tripId}";
+        await Clients.Group(groupName).SendAsync("ReceiveMessage", messageResponse);
+
+        ChatModerationRunner.Schedule(
+            _scopeFactory,
+            _hubContext,
+            groupName,
+            message.Id,
+            userId,
+            content,
+            async (services, messageId) =>
+            {
+                var repo = services.GetRequiredService<IOffroadMessageRepository>();
+                var deleted = await repo.DeleteMessageAsync(messageId);
+                if (deleted)
+                    await repo.SaveChanges();
+                return deleted;
+            });
     }
 }
