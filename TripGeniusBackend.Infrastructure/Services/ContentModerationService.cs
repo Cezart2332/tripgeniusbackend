@@ -113,10 +113,15 @@ public class ContentModerationService : IContentModerationService
 
             return new ModerationCheckResult(false);
         }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException)
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException or InvalidOperationException)
         {
             _logger.LogWarning(ex, "Image moderation unavailable; allowing upload (fail-open).");
             return new ModerationCheckResult(false);
+        }
+        finally
+        {
+            if (imageStream.CanSeek)
+                imageStream.Position = 0;
         }
     }
 

@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Npgsql;
 using TripGeniusBackend.Application.Interfaces;
+using TripGeniusBackend.Application.Interfaces.Services;
 using TripGeniusBackend.Domain.Entities;
 using TripGeniusBackend.Infrastructure.Persistence;
 
@@ -55,6 +56,15 @@ public class TripGeniusWebApplicationFactory : WebApplicationFactory<Program>
                 services.Remove(emailServiceDescriptor);
             }
             services.AddScoped<IEmailService, NoOpEmailService>();
+
+            foreach (var descriptor in services
+                         .Where(d => d.ServiceType == typeof(IContentModerationService))
+                         .ToList())
+            {
+                services.Remove(descriptor);
+            }
+
+            services.AddSingleton<IContentModerationService, NoOpContentModerationService>();
 
             var dbConn = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection") 
                          ?? "Host=localhost;Port=5432;Database=tripgenius_test;Username=postgres;Password=password";
