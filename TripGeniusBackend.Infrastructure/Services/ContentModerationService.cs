@@ -77,14 +77,13 @@ public class ContentModerationService : IContentModerationService
 
         try
         {
-            if (imageStream.CanSeek)
-                imageStream.Position = 0;
+            var imageBytes = await ReadAllBytesAsync(imageStream, cancellationToken);
 
             using var content = new MultipartFormDataContent();
-            var streamContent = new StreamContent(imageStream);
-            streamContent.Headers.ContentType = new MediaTypeHeaderValue(
+            var body = new ByteArrayContent(imageBytes);
+            body.Headers.ContentType = new MediaTypeHeaderValue(
                 string.IsNullOrWhiteSpace(contentType) ? "image/jpeg" : contentType);
-            content.Add(streamContent, "file", "upload.jpg");
+            content.Add(body, "file", "upload.jpg");
 
             using var response = await _httpClient.PostAsync("/image-check", content, cancellationToken);
 
@@ -113,7 +112,7 @@ public class ContentModerationService : IContentModerationService
 
             return new ModerationCheckResult(false);
         }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException or InvalidOperationException)
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException)
         {
             _logger.LogWarning(ex, "Image moderation unavailable; allowing upload (fail-open).");
             return new ModerationCheckResult(false);
@@ -123,6 +122,28 @@ public class ContentModerationService : IContentModerationService
             if (imageStream.CanSeek)
                 imageStream.Position = 0;
         }
+    }
+
+    private static async Task<byte[]> ReadAllBytesAsync(Stream stream, CancellationToken cancellationToken)
+    {
+        if (stream is MemoryStream memory)
+        {
+            if (memory.CanSeek)
+                memory.Position = 0;
+            return memory.ToArray();
+        }
+
+        if (stream.CanSeek)
+            stream.Position = 0;
+
+        using var buffer = new MemoryStream();
+        await stream.CopyToAsync(buffer, cancellationToken);
+        var bytes = buffer.ToArray();
+
+        if (stream.CanSeek)
+            stream.Position = 0;
+
+        return bytes;
     }
 
     private sealed class ImageCheckResponse

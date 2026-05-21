@@ -13,18 +13,17 @@ public static class ImageModeration
         if (file is null || file.Length == 0)
             return (null, null);
 
-        var stream = new MemoryStream();
-        await file.CopyToAsync(stream, cancellationToken);
-        stream.Position = 0;
+        using var buffer = new MemoryStream();
+        await file.CopyToAsync(buffer, cancellationToken);
+        var bytes = buffer.ToArray();
 
-        var result = await moderation.CheckImageAsync(stream, file.ContentType, cancellationToken);
+        var result = await moderation.CheckImageAsync(
+            new MemoryStream(bytes),
+            file.ContentType,
+            cancellationToken);
         if (result.IsBlocked)
-        {
-            await stream.DisposeAsync();
             return (null, new BadRequestObjectResult(new { message = result.Reason }));
-        }
 
-        stream.Position = 0;
-        return (stream, null);
+        return (new MemoryStream(bytes), null);
     }
 }
