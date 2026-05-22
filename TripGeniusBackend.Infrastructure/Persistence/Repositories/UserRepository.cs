@@ -37,7 +37,11 @@ public class UserRepository : IUserRepository
     }
     public async Task<User?> GetUserById(int id)
     {
-        return await _context.Users.Include(u => u.Profile).Include(u => u.Preferences).Include(u => u.Notifications)
+        return await _context.Users
+            .Include(u => u.Profile)
+            .Include(u => u.Preferences)
+            .Include(u => u.Notifications)
+            .Include(u => u.PushSubscription)
             .FirstOrDefaultAsync(u => u.Id == id);
     }
 
@@ -50,6 +54,15 @@ public class UserRepository : IUserRepository
     {
         _context.PushSubscriptions.Remove(subscription);
         return Task.CompletedTask;
+    }
+
+    public async Task DetachEndpointFromOtherUsersAsync(string endpoint, int userId)
+    {
+        var stale = await _context.PushSubscriptions
+            .Where(s => s.Endpoint == endpoint && s.UserId != userId)
+            .ToListAsync();
+        if (stale.Count == 0) return;
+        _context.PushSubscriptions.RemoveRange(stale);
     }
 
     public Task CreateUser(User user)

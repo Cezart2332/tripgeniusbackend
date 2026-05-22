@@ -12,6 +12,7 @@ public interface IUserRepository
     public Task<User?> GetUserByResetToken(string token);
     public Task<List<PushSubscription>> GetUserSubscriptions(int userId);
     public Task DeleteSubscription(PushSubscription subscription);
+    public Task DetachEndpointFromOtherUsersAsync(string endpoint, int userId);
     public Task CreateUser(User user);
     public Task DeleteUser(User user);
 

@@ -81,7 +81,10 @@ public class User
 
     public void SubscribeToPush(string endpoint, string p256Dh, string auth)
     {
-        PushSubscription = PushSubscription.Create(Id, endpoint, p256Dh, auth);
+        if (PushSubscription == null)
+            PushSubscription = PushSubscription.Create(Id, endpoint, p256Dh, auth);
+        else
+            PushSubscription.Update(endpoint, p256Dh, auth);
     }
 
     public void AddNotification(string content)

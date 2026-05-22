@@ -23,4 +23,11 @@ public class PushSubscription
     {
         return new PushSubscription(userId, endpoint, p256Dh, auth);
     }
+
+    public void Update(string endpoint, string p256Dh, string auth)
+    {
+        Endpoint = endpoint;
+        P256dh = p256Dh;
+        Auth = auth;
+    }
 }

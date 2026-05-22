@@ -150,10 +150,23 @@ public class UserService : IUserService
 
     public async Task SubscribeToNotifications(string endpoint, string auth, string p256dh)
     {
+        if (string.IsNullOrWhiteSpace(endpoint))
+            throw new ArgumentException("Push endpoint is required.");
+        if (string.IsNullOrWhiteSpace(p256dh) || string.IsNullOrWhiteSpace(auth))
+            throw new ArgumentException("Push subscription keys are required.");
+
         int userId = _jwtService.GetUserId();
         var user = await _userRepository.GetUserById(userId);
-        if(user == null) throw new KeyNotFoundException("User not found");
-        if(user.PushSubscription?.Endpoint == endpoint) return;
+        if (user == null) throw new KeyNotFoundException("User not found");
+
+        var existing = user.PushSubscription;
+        if (existing != null
+            && existing.Endpoint == endpoint
+            && existing.P256dh == p256dh
+            && existing.Auth == auth)
+            return;
+
+        await _userRepository.DetachEndpointFromOtherUsersAsync(endpoint, userId);
         user.SubscribeToPush(endpoint, p256dh, auth);
         await _userRepository.SaveChanges();
     }

@@ -106,8 +106,22 @@ public class UserController : ControllerBase
     [HttpPost("subscribe-to-notifications")]
     public async Task<IActionResult> SubscribeToNotifications([FromBody] PushSubscribe pushSubscribe)
     {
-        await _userService.SubscribeToNotifications(pushSubscribe.Endpoint,pushSubscribe.Auth,pushSubscribe.P256dh);
-        return Ok();
+        try
+        {
+            await _userService.SubscribeToNotifications(
+                pushSubscribe.Endpoint,
+                pushSubscribe.Auth,
+                pushSubscribe.P256dh);
+            return Ok();
+        }
+        catch (ArgumentException e)
+        {
+            return BadRequest(new { message = e.Message });
+        }
+        catch (KeyNotFoundException e)
+        {
+            return NotFound(new { message = e.Message });
+        }
     }
     
     [Authorize]

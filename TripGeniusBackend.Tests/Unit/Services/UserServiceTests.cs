@@ -216,4 +216,26 @@ public class UserServiceTests
         await Assert.ThrowsAsync<ArgumentException>(() => _userService.ChangePassword(request));
         _mockUserRepository.Verify(x => x.SaveChanges(), Times.Never);
     }
+
+    [Fact]
+    public async Task SubscribeToNotifications_WithExistingSubscription_UpdatesAndSaves()
+    {
+        const int userId = 1;
+        const string endpoint = "https://push.example/sub/1";
+        var user = User.UserCreate("user@example.com", "hashed");
+        user.SubscribeToPush(endpoint, "old-p256", "old-auth");
+
+        _mockJwtService.Setup(x => x.GetUserId()).Returns(userId);
+        _mockUserRepository.Setup(x => x.GetUserById(userId)).ReturnsAsync(user);
+        _mockUserRepository
+            .Setup(x => x.DetachEndpointFromOtherUsersAsync(endpoint, userId))
+            .Returns(Task.CompletedTask);
+
+        await _userService.SubscribeToNotifications(endpoint, "new-auth", "new-p256");
+
+        user.PushSubscription!.Auth.Should().Be("new-auth");
+        user.PushSubscription.P256dh.Should().Be("new-p256");
+        _mockUserRepository.Verify(x => x.DetachEndpointFromOtherUsersAsync(endpoint, userId), Times.Once);
+        _mockUserRepository.Verify(x => x.SaveChanges(), Times.Once);
+    }
 }
