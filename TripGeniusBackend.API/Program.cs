@@ -150,6 +150,7 @@ builder.Services.AddHttpClient<IContentModerationService, ContentModerationServi
         client.BaseAddress = new Uri(settings.BaseUrl.TrimEnd('/') + "/");
     client.Timeout = TimeSpan.FromSeconds(ModerationHttpTimeouts.ClientSeconds(settings.TimeoutSeconds));
 });
+builder.Services.AddSingleton<IBackgroundModerationService, BackgroundModerationService>();
 builder.Services.AddHttpClient(nameof(ModerationStartupLogger));
 builder.Services.AddHostedService<ModerationStartupLogger>();
 builder.Services.AddSingleton<ILinkValidationService, LinkValidationService>();

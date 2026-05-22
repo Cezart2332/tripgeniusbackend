@@ -1,7 +1,10 @@
-﻿using TripGeniusBackend.Application.Interfaces;
-using TripGeniusBackend.Application.DTOs.User;
+﻿using TripGeniusBackend.Application.DTOs.User;
+using TripGeniusBackend.Application.Helpers;
+using TripGeniusBackend.Application.Interfaces;
 using TripGeniusBackend.Application.Interfaces.Queries;
+using TripGeniusBackend.Application.Interfaces.Services;
 using TripGeniusBackend.Application.Interfaces.UseCases;
+using TripGeniusBackend.Application.Moderation;
 using TripGeniusBackend.Domain.Entities;
 
 namespace TripGeniusBackend.Application.UseCases;
@@ -13,14 +16,22 @@ public class UserService : IUserService
     private readonly IJwtService _jwtService;
     private readonly IFileUploader _fileUploader;
     private readonly IPasswordHasher _passwordHasher;
+    private readonly IBackgroundModerationService _backgroundModeration;
 
-    public UserService(IUserRepository userRepository, IUserQueryService userQueryService,IJwtService jwtService, IFileUploader fileUploader, IPasswordHasher passwordHasher)
+    public UserService(
+        IUserRepository userRepository,
+        IUserQueryService userQueryService,
+        IJwtService jwtService,
+        IFileUploader fileUploader,
+        IPasswordHasher passwordHasher,
+        IBackgroundModerationService backgroundModeration)
     {
         _userRepository = userRepository;
         _userQueryService = userQueryService;
         _jwtService = jwtService;
         _fileUploader = fileUploader;
         _passwordHasher = passwordHasher;
+        _backgroundModeration = backgroundModeration;
     }
     
     public async Task<UserResponse?> GetMe()
@@ -31,19 +42,34 @@ public class UserService : IUserService
 
     public async Task<UserResponse> Update(UpdateRequest updateRequest)
     {
-        var user = await _userRepository.GetUserById(_jwtService.GetUserId());
+        var userId = _jwtService.GetUserId();
+        var user = await _userRepository.GetUserById(userId);
         if (user == null) throw new KeyNotFoundException("User not found");
-        string url = null;
+
+        var avatarBytes = await StreamBuffer.ReadAllBytesAsync(updateRequest.AvatarStream);
+
+        string? url = null;
         if (updateRequest.AvatarStream != null)
         { 
             url = await _fileUploader.UploadFile(updateRequest.AvatarStream,Path.GetExtension(updateRequest.AvatarFileName),"avatar", user.Id);
-
         }
         user.UpdateProfile(updateRequest.Username ?? user.Profile.Username, url ?? user.Profile.ProfileURL, updateRequest.Description ?? user.Profile.Description);
         
         user.UpdatePreferences(updateRequest.GroupSize ?? user.Preferences.MaxGroupSize, updateRequest.Tags ?? user.Preferences.Tags);
         
         await _userRepository.SaveChanges();
+
+        _backgroundModeration.ScheduleTextReview(
+            ModerationTarget.UserProfile,
+            userId,
+            userId,
+            ModerationFields.ToReviewList(ModerationFields.FromProfileUpdate(
+                updateRequest.Username ?? user.Profile.Username,
+                updateRequest.Description ?? user.Profile.Description,
+                updateRequest.Tags ?? user.Preferences.Tags)));
+        if (avatarBytes is { Length: > 0 })
+            _backgroundModeration.ScheduleImageReview(
+                ModerationTarget.UserAvatar, userId, userId, avatarBytes, ImageContentType(updateRequest.AvatarFileName));
         
         return new UserResponse
         {
@@ -53,6 +79,18 @@ public class UserService : IUserService
             Description = user.Profile.Description,
             Tags = user.Preferences.Tags,
             GroupSize = user.Preferences.MaxGroupSize
+        };
+    }
+
+    private static string? ImageContentType(string? fileName)
+    {
+        if (string.IsNullOrEmpty(fileName)) return null;
+        return Path.GetExtension(fileName).ToLowerInvariant() switch
+        {
+            ".png" => "image/png",
+            ".webp" => "image/webp",
+            ".gif" => "image/gif",
+            _ => "image/jpeg",
         };
     }
 

@@ -31,6 +31,14 @@ public class OffroadTripRepository : IOffroadTripRepository
             .Include(t => t.Routes)
             .FirstOrDefaultAsync(t => t.Id == id);
 
+    public async Task DeleteTrip(int id)
+    {
+        var trip = await _context.OffroadTrips.FindAsync(id);
+        if (trip is null) return;
+        _context.OffroadTrips.Remove(trip);
+        await _context.SaveChangesAsync();
+    }
+
     public async Task SaveChanges() => await _context.SaveChangesAsync();
 
     public async Task<List<OffroadTrip>> SearchSimilarAsync(float[] queryEmbedding, int userId, int limit = 5)

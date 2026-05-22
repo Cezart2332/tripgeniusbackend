@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using TripGeniusBackend.API.DTOs;
 using TripGeniusBackend.API.Helpers;
 using TripGeniusBackend.Application.DTOs.Trip;
-using TripGeniusBackend.Application.Interfaces.Services;
 using TripGeniusBackend.Application.Interfaces.UseCases;
 
 namespace TripGeniusBackend.API.Controllers;
@@ -13,12 +12,10 @@ namespace TripGeniusBackend.API.Controllers;
 public class TripController : ControllerBase
 {
     private readonly ITripService _tripService;
-    private readonly IContentModerationService _moderation;
 
-    public TripController(ITripService tripService, IContentModerationService moderation)
+    public TripController(ITripService tripService)
     {
         _tripService = tripService;
-        _moderation = moderation;
     }
 
     [Authorize]
@@ -27,16 +24,9 @@ public class TripController : ControllerBase
     {
         try
         {
-            var (imageStream, imageRejection) = await ImageModeration.ValidateUploadAsync(
-                initialTripRequest.Image, _moderation);
-            if (imageRejection != null)
-                return imageRejection;
-
-            var textRejection = await TextModeration.ValidateFieldsAsync(
-                _moderation,
-                TextModeration.CollectTripCreate(initialTripRequest));
-            if (textRejection != null)
-                return textRejection;
+            var (imageStream, imageError) = await ImageModeration.BufferUploadAsync(initialTripRequest.Image);
+            if (imageError != null)
+                return imageError;
 
             try
             {
@@ -129,16 +119,9 @@ public class TripController : ControllerBase
     [HttpPatch("update-trip")]
     public async Task<IActionResult> UpdateTrip([FromForm] InitialTripUpdateRequest initialTripUpdateRequest)
     {
-        var (imageStream, imageRejection) = await ImageModeration.ValidateUploadAsync(
-            initialTripUpdateRequest.Image, _moderation);
-        if (imageRejection != null)
-            return imageRejection;
-
-        var textRejection = await TextModeration.ValidateFieldsAsync(
-            _moderation,
-            TextModeration.CollectTripUpdate(initialTripUpdateRequest));
-        if (textRejection != null)
-            return textRejection;
+        var (imageStream, imageError) = await ImageModeration.BufferUploadAsync(initialTripUpdateRequest.Image);
+        if (imageError != null)
+            return imageError;
 
         try
         {
@@ -176,12 +159,6 @@ public class TripController : ControllerBase
     [HttpPatch("update-timeline")]
     public async Task<IActionResult> UpdateTimeline(UpdateTimelineRequest updateTimelineRequest)
     {
-        var textRejection = await TextModeration.ValidateFieldsAsync(
-            _moderation,
-            TextModeration.CollectTimeline(updateTimelineRequest));
-        if (textRejection != null)
-            return textRejection;
-
         var timeline = await _tripService.UpdateTimeline(updateTimelineRequest);
         return Ok(timeline);
     }
@@ -197,12 +174,6 @@ public class TripController : ControllerBase
     [HttpPost("add-timeline")]
     public async Task<IActionResult> AddTimeline(UpdateTimelineRequest updateTimelineRequest)
     {
-        var textRejection = await TextModeration.ValidateFieldsAsync(
-            _moderation,
-            TextModeration.CollectTimeline(updateTimelineRequest));
-        if (textRejection != null)
-            return textRejection;
-
         await _tripService.AddTimeline(updateTimelineRequest);
         return Ok();
     }

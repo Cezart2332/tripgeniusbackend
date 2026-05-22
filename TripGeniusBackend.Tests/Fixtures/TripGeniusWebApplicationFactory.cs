@@ -66,6 +66,15 @@ public class TripGeniusWebApplicationFactory : WebApplicationFactory<Program>
 
             services.AddSingleton<IContentModerationService, NoOpContentModerationService>();
 
+            foreach (var descriptor in services
+                         .Where(d => d.ServiceType == typeof(IBackgroundModerationService))
+                         .ToList())
+            {
+                services.Remove(descriptor);
+            }
+
+            services.AddSingleton<IBackgroundModerationService, NoOpBackgroundModerationService>();
+
             var dbConn = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection") 
                          ?? "Host=localhost;Port=5432;Database=tripgenius_test;Username=postgres;Password=password";
 

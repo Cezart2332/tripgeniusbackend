@@ -4,8 +4,6 @@ using TripGeniusBackend.API.DTOs;
 using TripGeniusBackend.API.Helpers;
 using TripGeniusBackend.Application.DTOs.Notifications;
 using TripGeniusBackend.Application.DTOs.User;
-using TripGeniusBackend.Application.Interfaces;
-using TripGeniusBackend.Application.Interfaces.Services;
 using TripGeniusBackend.Application.Interfaces.UseCases;
 
 namespace TripGeniusBackend.API.Controllers;
@@ -15,12 +13,10 @@ namespace TripGeniusBackend.API.Controllers;
 public class UserController : ControllerBase
 {
     private readonly IUserService _userService;
-    private readonly IContentModerationService _moderation;
 
-    public UserController(IUserService userService, IContentModerationService moderation)
+    public UserController(IUserService userService)
     {
         _userService = userService;
-        _moderation = moderation;
     }
 
     [Authorize]
@@ -34,16 +30,9 @@ public class UserController : ControllerBase
     [HttpPut("update")]
     public async Task<IActionResult> Update([FromForm] InitialUpdateRequest initialUpdateRequest)
     {
-        var (avatarStream, avatarRejection) = await ImageModeration.ValidateUploadAsync(
-            initialUpdateRequest.Avatar, _moderation);
-        if (avatarRejection != null)
-            return avatarRejection;
-
-        var textRejection = await TextModeration.ValidateFieldsAsync(
-            _moderation,
-            TextModeration.CollectProfileUpdate(initialUpdateRequest));
-        if (textRejection != null)
-            return textRejection;
+        var (avatarStream, avatarError) = await ImageModeration.BufferUploadAsync(initialUpdateRequest.Avatar);
+        if (avatarError != null)
+            return avatarError;
 
         try
         {

@@ -5,6 +5,7 @@ using TripGeniusBackend.Application.DTOs.User;
 using TripGeniusBackend.Application.Interfaces;
 using TripGeniusBackend.Application.Interfaces.Queries;
 using TripGeniusBackend.Application.Interfaces.Repositories;
+using TripGeniusBackend.Application.Interfaces.Services;
 using TripGeniusBackend.Application.UseCases;
 using TripGeniusBackend.Domain.Entities;
 
@@ -32,7 +33,8 @@ public class UserServiceTests
             _mockUserQueryService.Object,
             _mockJwtService.Object,
             _mockFileUploader.Object,
-            _mockPasswordHasher.Object
+            _mockPasswordHasher.Object,
+            new Mock<IBackgroundModerationService>().Object
         );
     }
 

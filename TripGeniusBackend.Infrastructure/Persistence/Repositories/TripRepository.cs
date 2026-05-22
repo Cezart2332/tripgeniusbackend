@@ -39,6 +39,14 @@ public class TripRepository : ITripRepository
             .FirstOrDefaultAsync(t => t.Id == id);
     }
 
+    public async Task DeleteTrip(int id)
+    {
+        var trip = await _context.Trips.FindAsync(id);
+        if (trip is null) return;
+        _context.Trips.Remove(trip);
+        await _context.SaveChangesAsync();
+    }
+
     public async Task SaveChanges()
     {
         await _context.SaveChangesAsync();

@@ -2,10 +2,13 @@
 using Pgvector;
 using TripGeniusBackend.Application.DTOs.Trip;
 using TripGeniusBackend.Application.Exceptions;
+using TripGeniusBackend.Application.Helpers;
 using TripGeniusBackend.Application.Interfaces;
 using TripGeniusBackend.Application.Interfaces.Queries;
 using TripGeniusBackend.Application.Interfaces.Repositories;
+using TripGeniusBackend.Application.Interfaces.Services;
 using TripGeniusBackend.Application.Interfaces.UseCases;
+using TripGeniusBackend.Application.Moderation;
 using TripGeniusBackend.Domain.Entities;
 using TripGeniusBackend.Domain.Enums;
 
@@ -22,8 +25,9 @@ public class TripService : ITripService
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly INotificationService _notificationService;
     private readonly IPdfService _pdfService;
+    private readonly IBackgroundModerationService _backgroundModeration;
     
-    public TripService(ITripRepository tripRepository,ITripQueryService tripQueryService, IUserRepository userRepository, IJwtService jwtService, IFileUploader fileUploader, IMessageQueryService messageQueryService,IServiceScopeFactory scopeFactory, INotificationService notificationService, IPdfService pdfService)
+    public TripService(ITripRepository tripRepository,ITripQueryService tripQueryService, IUserRepository userRepository, IJwtService jwtService, IFileUploader fileUploader, IMessageQueryService messageQueryService,IServiceScopeFactory scopeFactory, INotificationService notificationService, IPdfService pdfService, IBackgroundModerationService backgroundModeration)
     {
         _tripRepository = tripRepository;
         _tripQueryService = tripQueryService;
@@ -34,6 +38,7 @@ public class TripService : ITripService
         _scopeFactory = scopeFactory;
         _notificationService = notificationService;
         _pdfService = pdfService;
+        _backgroundModeration = backgroundModeration;
     }
 
     public async Task<int> CreateTrip(TripRequest tripRequest)
@@ -54,6 +59,8 @@ public class TripService : ITripService
         }
         
 
+        var imageBytes = await StreamBuffer.ReadAllBytesAsync(tripRequest.ImageStream);
+
         await _tripRepository.CreateTrip(trip);
         await _tripRepository.SaveChanges();
         if (tripRequest.ImageStream != null)
@@ -66,6 +73,15 @@ public class TripService : ITripService
             trip.SetImageUrl(tripRequest.ImageUrl);
         }
         await _tripRepository.SaveChanges();
+
+        _backgroundModeration.ScheduleTextReview(
+            ModerationTarget.TripDetails,
+            userId,
+            trip.Id,
+            ModerationFields.ToReviewList(ModerationFields.FromTripRequest(tripRequest)));
+        if (imageBytes is { Length: > 0 })
+            _backgroundModeration.ScheduleImageReview(
+                ModerationTarget.TripCover, userId, trip.Id, imageBytes, ImageContentType(tripRequest.ImageFileName));
         _ = Task.Run(async () =>
         {
             using var scope = _scopeFactory.CreateScope();
@@ -266,6 +282,8 @@ public class TripService : ITripService
         if(trip == null) throw new KeyNotFoundException("Trip not found");
         bool isOwner = trip.Members.Any(m => m.UserId == userId && m.Role == Roles.Owner);
         if(!isOwner) throw new UnauthorizedAccessException("You are not authorized to do this");
+        var imageBytes = await StreamBuffer.ReadAllBytesAsync(UpdateTripRequest.ImageStream);
+
         trip.UpdateTrip(UpdateTripRequest.Title, UpdateTripRequest.Description, UpdateTripRequest.StartingDate, UpdateTripRequest.EndingDate, UpdateTripRequest.Status,UpdateTripRequest.Tags, UpdateTripRequest.MaxParticipants, UpdateTripRequest.Price);
         if (UpdateTripRequest.ImageStream != null)
         {
@@ -273,6 +291,15 @@ public class TripService : ITripService
             trip.SetImageUrl(url);
         }
         await _tripRepository.SaveChanges();
+
+        _backgroundModeration.ScheduleTextReview(
+            ModerationTarget.TripDetails,
+            userId,
+            trip.Id,
+            ModerationFields.ToReviewList(ModerationFields.FromTripUpdate(UpdateTripRequest)));
+        if (imageBytes is { Length: > 0 })
+            _backgroundModeration.ScheduleImageReview(
+                ModerationTarget.TripCover, userId, trip.Id, imageBytes, ImageContentType(UpdateTripRequest.ImageFileName));
         _ = Task.Run(async () =>
         {
             using var scope = _scopeFactory.CreateScope();
@@ -323,6 +350,14 @@ public class TripService : ITripService
         if(!isOwner) throw new KeyNotFoundException("You are not authorized to view this");
         trip.UpdateTimeline(updateTimelineRequest.Id, updateTimelineRequest.StartDay,updateTimelineRequest.EndDay, updateTimelineRequest.StartingPoint, updateTimelineRequest.FromCoords, updateTimelineRequest.EndPoint, updateTimelineRequest.ToCoords, updateTimelineRequest.Note);
         await _tripRepository.SaveChanges();
+
+        _backgroundModeration.ScheduleTextReview(
+            ModerationTarget.TripTimeline,
+            userId,
+            tripId,
+            ModerationFields.ToReviewList(ModerationFields.FromTimeline(updateTimelineRequest)),
+            updateTimelineRequest.Id);
+
         _ = Task.Run(async () =>
         {
             using var scope = _scopeFactory.CreateScope();
@@ -401,6 +436,18 @@ public class TripService : ITripService
         if(!isOwner) throw new UnauthorizedAccessException("You are not authorized to do this");
         trip.AddTimeline(updateTimelineRequest.StartDay,updateTimelineRequest.EndDay, updateTimelineRequest.StartingPoint, updateTimelineRequest.FromCoords, updateTimelineRequest.EndPoint, updateTimelineRequest.ToCoords, updateTimelineRequest.Note);
         await _tripRepository.SaveChanges();
+
+        var timelineId = trip.Timelines.MaxBy(t => t.Id)?.Id ?? 0;
+        if (timelineId > 0)
+        {
+            _backgroundModeration.ScheduleTextReview(
+                ModerationTarget.TripTimeline,
+                userId,
+                tripId,
+                ModerationFields.ToReviewList(ModerationFields.FromTimeline(updateTimelineRequest)),
+                timelineId);
+        }
+
         _ = Task.Run(async () =>
         {
             using var scope = _scopeFactory.CreateScope();
@@ -426,6 +473,18 @@ public class TripService : ITripService
             freshTrip.UpdateEmbedding(new Vector(embedding));
             await tripRepository.SaveChanges();
         });
+    }
+
+    private static string? ImageContentType(string? fileName)
+    {
+        if (string.IsNullOrEmpty(fileName)) return null;
+        return Path.GetExtension(fileName).ToLowerInvariant() switch
+        {
+            ".png" => "image/png",
+            ".webp" => "image/webp",
+            ".gif" => "image/gif",
+            _ => "image/jpeg",
+        };
     }
 
     public async Task<List<MessageResponse>> GetMessages(int tripId)

@@ -7,6 +7,7 @@ public interface IOffroadTripRepository
     Task CreateTrip(OffroadTrip trip);
     Task UpdateTrip(OffroadTrip trip);
     Task<OffroadTrip?> GetTripById(int id);
+    Task DeleteTrip(int id);
     Task SaveChanges();
     Task<List<OffroadTrip>> SearchSimilarAsync(float[] queryEmbedding, int userId, int limit = 5);
 }

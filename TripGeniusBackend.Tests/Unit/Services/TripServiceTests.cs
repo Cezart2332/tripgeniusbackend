@@ -5,6 +5,7 @@ using TripGeniusBackend.Application.DTOs.Trip;
 using TripGeniusBackend.Application.Interfaces;
 using TripGeniusBackend.Application.Interfaces.Queries;
 using TripGeniusBackend.Application.Interfaces.Repositories;
+using TripGeniusBackend.Application.Interfaces.Services;
 using TripGeniusBackend.Application.UseCases;
 using TripGeniusBackend.Tests.Builders;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,6 +23,7 @@ public class TripServiceTests
     private readonly Mock<IServiceScopeFactory> _mockScopeFactory;
     private readonly Mock<INotificationService> _mockNotificationService;
     private readonly Mock<IPdfService> _mockPdfService;
+    private readonly Mock<IBackgroundModerationService> _mockBackgroundModeration;
     private readonly TripService _tripService;
 
     public TripServiceTests()
@@ -35,6 +37,7 @@ public class TripServiceTests
         _mockScopeFactory = new Mock<IServiceScopeFactory>();
         _mockNotificationService = new Mock<INotificationService>();
         _mockPdfService = new Mock<IPdfService>();
+        _mockBackgroundModeration = new Mock<IBackgroundModerationService>();
 
         _tripService = new TripService(
             _mockTripRepository.Object,
@@ -45,7 +48,8 @@ public class TripServiceTests
             _mockMessageQueryService.Object,
             _mockScopeFactory.Object,
             _mockNotificationService.Object,
-            _mockPdfService.Object
+            _mockPdfService.Object,
+            _mockBackgroundModeration.Object
         );
     }
 

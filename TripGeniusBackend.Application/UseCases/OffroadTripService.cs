@@ -9,6 +9,7 @@ using TripGeniusBackend.Application.Interfaces.Queries;
 using TripGeniusBackend.Application.Interfaces.Repositories;
 using TripGeniusBackend.Application.Interfaces.Services;
 using TripGeniusBackend.Application.Interfaces.UseCases;
+using TripGeniusBackend.Application.Moderation;
 using TripGeniusBackend.Domain.Entities;
 using TripGeniusBackend.Domain.Enums;
 
@@ -25,6 +26,7 @@ public class OffroadTripService : IOffroadTripService
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly INotificationService _notificationService;
     private readonly IGpxService _gpxService;
+    private readonly IBackgroundModerationService _backgroundModeration;
 
     public OffroadTripService(
         IOffroadTripRepository tripRepository,
@@ -35,7 +37,8 @@ public class OffroadTripService : IOffroadTripService
         IOffroadMessageQueryService messageQueryService,
         IServiceScopeFactory scopeFactory,
         INotificationService notificationService,
-        IGpxService gpxService)
+        IGpxService gpxService,
+        IBackgroundModerationService backgroundModeration)
     {
         _tripRepository = tripRepository;
         _tripQueryService = tripQueryService;
@@ -46,6 +49,7 @@ public class OffroadTripService : IOffroadTripService
         _scopeFactory = scopeFactory;
         _notificationService = notificationService;
         _gpxService = gpxService;
+        _backgroundModeration = backgroundModeration;
     }
 
     public async Task<int> CreateTrip(OffroadTripRequest request)
@@ -62,6 +66,8 @@ public class OffroadTripService : IOffroadTripService
                 route.Source, route.DistanceMeters, route.ElevationGainMeters);
         }
 
+        var imageBytes = await StreamBuffer.ReadAllBytesAsync(request.ImageStream);
+
         await _tripRepository.CreateTrip(trip);
         await _tripRepository.SaveChanges();
 
@@ -76,6 +82,15 @@ public class OffroadTripService : IOffroadTripService
             trip.SetImageUrl(request.ImageUrl);
         }
         await _tripRepository.SaveChanges();
+
+        _backgroundModeration.ScheduleTextReview(
+            ModerationTarget.OffroadTripDetails,
+            userId,
+            trip.Id,
+            ModerationFields.ToReviewList(ModerationFields.FromOffroadTripRequest(request)));
+        if (imageBytes is { Length: > 0 })
+            _backgroundModeration.ScheduleImageReview(
+                ModerationTarget.OffroadTripCover, userId, trip.Id, imageBytes, ImageContentType(request.ImageFileName));
 
         ScheduleEmbeddingUpdate(trip.Id);
         return trip.Id;
@@ -108,6 +123,8 @@ public class OffroadTripService : IOffroadTripService
         if (!trip.Members.Any(m => m.UserId == userId && m.Role == Roles.Owner))
             throw new UnauthorizedAccessException("You are not authorized to do this");
 
+        var imageBytes = await StreamBuffer.ReadAllBytesAsync(request.ImageStream);
+
         trip.UpdateTrip(request.Title, request.Description, request.StartingDate, request.EndingDate,
             request.Status, request.Tags, request.MaxParticipants, request.Price);
 
@@ -119,6 +136,16 @@ public class OffroadTripService : IOffroadTripService
         }
 
         await _tripRepository.SaveChanges();
+
+        _backgroundModeration.ScheduleTextReview(
+            ModerationTarget.OffroadTripDetails,
+            userId,
+            trip.Id,
+            ModerationFields.ToReviewList(ModerationFields.FromOffroadTripUpdate(request)));
+        if (imageBytes is { Length: > 0 })
+            _backgroundModeration.ScheduleImageReview(
+                ModerationTarget.OffroadTripCover, userId, trip.Id, imageBytes, ImageContentType(request.ImageFileName));
+
         ScheduleEmbeddingUpdate(trip.Id);
         return (await _tripQueryService.GetTrip(trip.Id, userId))!;
     }
@@ -137,6 +164,13 @@ public class OffroadTripService : IOffroadTripService
         ScheduleEmbeddingUpdate(trip.Id);
 
         var route = trip.Routes.Last();
+        _backgroundModeration.ScheduleTextReview(
+            ModerationTarget.OffroadRoute,
+            userId,
+            route.Id,
+            ModerationFields.ToReviewList(ModerationFields.FromOffroadRoute(request)),
+            request.TripId);
+
         return (await _tripQueryService.GetRoute(route.Id))!;
     }
 
@@ -152,6 +186,14 @@ public class OffroadTripService : IOffroadTripService
             trackGeoJson, source, distance, elevation, originalGpx);
         await _tripRepository.SaveChanges();
         ScheduleEmbeddingUpdate(trip.Id);
+
+        _backgroundModeration.ScheduleTextReview(
+            ModerationTarget.OffroadRoute,
+            userId,
+            request.Id,
+            ModerationFields.ToReviewList(ModerationFields.FromOffroadRoute(request)),
+            request.TripId);
+
         return (await _tripQueryService.GetRoute(request.Id))!;
     }
 
@@ -383,5 +425,17 @@ public class OffroadTripService : IOffroadTripService
         trip.UpdateMemberRole(updateRoleRequest.Id,
             updateRoleRequest.Role.Equals("admin", StringComparison.OrdinalIgnoreCase) ? Roles.Admin : Roles.Member);
         await _tripRepository.SaveChanges();
+    }
+
+    private static string? ImageContentType(string? fileName)
+    {
+        if (string.IsNullOrEmpty(fileName)) return null;
+        return Path.GetExtension(fileName).ToLowerInvariant() switch
+        {
+            ".png" => "image/png",
+            ".webp" => "image/webp",
+            ".gif" => "image/gif",
+            _ => "image/jpeg",
+        };
     }
 }

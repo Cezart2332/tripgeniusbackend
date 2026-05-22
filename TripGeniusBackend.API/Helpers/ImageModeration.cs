@@ -5,6 +5,20 @@ namespace TripGeniusBackend.API.Helpers;
 
 public static class ImageModeration
 {
+    /// <summary>Buffers upload bytes without blocking on moderation (review runs in background).</summary>
+    public static async Task<(MemoryStream? Stream, IActionResult? Error)> BufferUploadAsync(
+        IFormFile? file,
+        CancellationToken cancellationToken = default)
+    {
+        if (file is null || file.Length == 0)
+            return (null, null);
+
+        using var buffer = new MemoryStream();
+        await file.CopyToAsync(buffer, cancellationToken);
+        var bytes = buffer.ToArray();
+        return (new MemoryStream(bytes), null);
+    }
+
     public static async Task<(MemoryStream? Stream, IActionResult? Rejection)> ValidateUploadAsync(
         IFormFile? file,
         IContentModerationService moderation,
