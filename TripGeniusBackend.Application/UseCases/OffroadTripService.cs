@@ -292,6 +292,9 @@ public class OffroadTripService : IOffroadTripService
     private async Task HandleMembershipRequest(int tripId, int invitedId)
     {
         var userId = _jwtService.GetUserId();
+        if (invitedId <= 0)
+            invitedId = userId;
+
         var trip = await _tripRepository.GetTripById(tripId);
         var invited = await _userRepository.GetUserById(invitedId);
         if (invited == null) throw new KeyNotFoundException("User not found");
