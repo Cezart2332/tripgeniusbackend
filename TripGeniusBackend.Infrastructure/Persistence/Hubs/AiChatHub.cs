@@ -149,6 +149,9 @@ public class AiChatHub : Hub
         var user = await _userRepository.GetUserById(userId);
         var preferences = user?.Preferences;
         if (user == null) throw new KeyNotFoundException("User not found");
+        // Load history before persisting this turn so AskAsync does not see the same user text twice.
+        var lastMessages = await _aiChatQueryService.GetShortTermMemory(userId);
+
         var aiRequest = new AiChatHistory
         {
             Content = content,
@@ -161,7 +164,6 @@ public class AiChatHub : Hub
         await Clients.Group(userId.ToString()).SendAsync("StartAiMessage");
         await Clients.Group(userId.ToString()).SendAsync("StatusUpdate", AiActivityStatus.Analyzing);
         string fullResponse = "";
-        var lastMessages = await _aiChatQueryService.GetShortTermMemory(userId);
 
         // Parallelize embeddings (HttpClient) but run DB queries sequentially (DbContext is not thread-safe)
         var queryEmbedTask = _embeddingService.GetEmbedding(content);
@@ -175,7 +177,9 @@ public class AiChatHub : Hub
         var trips = await _tripRepository.SearchSimilarAsync(tripEmbedding, userId);
         var offroadTrips = await _offroadTripRepository.SearchSimilarAsync(tripEmbedding, userId);
         var memoryContext = memories.Any()
-            ? "WHAT YOU KNOW ABOUT THIS USER:\n" + string.Join("\n", memories.Select(m => $"- {m.Content}"))
+            ? "WHAT YOU KNOW ABOUT THIS USER (use for vague food/activity asks; ignore when the "
+              + "current message states specific style, cuisine, budget, or occasion):\n"
+              + string.Join("\n", memories.Select(m => $"- {m.Content}"))
             : "";
 
         var tripsContext = trips.Any()

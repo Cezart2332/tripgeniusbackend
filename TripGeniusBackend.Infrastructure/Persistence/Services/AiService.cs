@@ -171,14 +171,18 @@ public class AiService : IAiService
     - Current Year: {DateTime.UtcNow.Year}
 
     =========================================
-    YOU DECIDE — use openrouter:web_search and openrouter:web_fetch when needed:
+    WEB SEARCH (openrouter:web_search + web_fetch) — REQUIRED for real-world places:
     =========================================
-    1. APP / FEATURE / USER TRIP questions fully answered by APP CONTEXT or RELEVANT TRIPS below:
-       respond from that context only — do not call web_search or web_fetch.
-    2. Restaurants, hotels, attractions, prices, hours, weather, events, or any live external facts:
-       WORKFLOW (required): web_search first → find URLs → web_fetch EACH URL → only then write the answer.
-       If web_fetch shows 404, listing page, or error, search again — never put that URL in [LINKS:...].
-       Base facts and links ONLY on tool results, not memory. Open with ONE short friendly sentence (max 12 words).
+    SKIP web tools ONLY when the user asks purely about the TripGenius app (settings, buttons, how to
+    create a trip) or when you only summarize a trip already listed in RELEVANT TRIPS below.
+
+    You MUST web_search first (then web_fetch each URL) when the user asks about ANY of these:
+    cafes, coffee, restaurants, bars, hotels, hostels, attractions, specialty food/drink, prices, hours,
+    weather, events, "where can I", "recommend", "best place", or naming specific businesses — even as
+    a follow-up ("what if I want a specialty coffee?"). Never answer those from memory alone.
+
+    WORKFLOW: web_search → pick URLs → web_fetch EACH URL → then write. If fetch fails, search again.
+    Open with ONE short friendly sentence (max 12 words).
 
     APP CONTEXT & SUPPORT GUIDANCE:
     - Profile: To change details, preferences, view notifications/invites.
@@ -186,8 +190,17 @@ public class AiService : IAiService
     - Settings: To delete account, change mail or password.
     - Support: For technical issues.
 
-    USER PREFERENCES: Apply "WHAT YOU KNOW ABOUT THIS USER" and "USER PREFERENCES" silently
-    to tailor recommendations. Never mention these explicitly.
+    MEMORY & USER PREFERENCES ("WHAT YOU KNOW ABOUT THIS USER" + "USER PREFERENCES"):
+    - VAGUE asks (e.g. "what should I eat?", "where to eat?", "any ideas?", "ce sa mananc?"):
+      USE memories and profile tags to infer taste (e.g. likes shawarma → search and suggest shawarma
+      or similar). Build web_search queries from those tastes plus city/area from the conversation.
+      Do not say "I remember you like…" unless it sounds natural.
+    - SPECIFIC asks (classy/fine dining, named cuisine, budget, occasion, "specialty coffee",
+      detailed criteria, explicit style in the message): follow THIS message only — do NOT override
+      with memories (e.g. do not push shawarma if they asked for a classy restaurant).
+      Still web_search for venues that match what they asked for.
+    - Always web_search before naming real restaurants/cafes/hotels; memories guide search wording
+      on vague asks only, never replace live results.
 
     LINK RULES (when recommending real places):
     - Recommend at most 3 places total. Never list 4 or 5 options.
@@ -290,7 +303,13 @@ public class AiService : IAiService
         };
 
         fullMessages.AddRange(lastMessages.Select(m => new { role = m.Role.ToLower(), content = m.Message }));
-        fullMessages.Add(new { role = "user", content = prompt });
+
+        var last = lastMessages.LastOrDefault();
+        var alreadyHasPrompt = last is not null
+            && string.Equals(last.Role, "user", StringComparison.OrdinalIgnoreCase)
+            && string.Equals(last.Message.Trim(), prompt.Trim(), StringComparison.Ordinal);
+        if (!alreadyHasPrompt)
+            fullMessages.Add(new { role = "user", content = prompt });
 
         await StreamWithToolUsageAsync(fullMessages, onChunk, onStatus);
     }

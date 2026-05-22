@@ -15,6 +15,8 @@ services:
       - IMAGE_MAX_EDGE=640
       - TOXIC_THRESHOLD=0.72
       - SHORT_TEXT_TOXIC_THRESHOLD=0.88
+      # Multi-label block heads (model must export them; see TEXT_MODEL_HF_ID at image build)
+      - TOXIC_LABELS=toxic,severe_toxic,obscene,threat,insult,identity_hate
       - LOG_LEVEL=INFO
       - MODERATION_LOG_PREVIEW=true
     healthcheck:
