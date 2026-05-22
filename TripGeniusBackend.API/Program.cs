@@ -145,7 +145,7 @@ builder.Services.AddHttpClient<IContentModerationService, ContentModerationServi
     var settings = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<ModerationSettings>>().Value;
     if (!string.IsNullOrWhiteSpace(settings.BaseUrl))
         client.BaseAddress = new Uri(settings.BaseUrl.TrimEnd('/') + "/");
-    client.Timeout = TimeSpan.FromSeconds(Math.Clamp(settings.TimeoutSeconds, 1, 30));
+    client.Timeout = TimeSpan.FromSeconds(ModerationHttpTimeouts.ClientSeconds(settings.TimeoutSeconds));
 });
 builder.Services.AddHttpClient(nameof(ModerationStartupLogger));
 builder.Services.AddHostedService<ModerationStartupLogger>();

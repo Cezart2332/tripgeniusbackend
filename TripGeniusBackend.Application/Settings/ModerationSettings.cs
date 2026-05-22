@@ -10,7 +10,8 @@ public class ModerationSettings
 
     public string BaseUrl { get; set; } = "http://moderation:8000";
 
-    public int TimeoutSeconds { get; set; } = 15;
+    /// <summary>HTTP timeout for /text-check and /image-check. First call needs model load; use ≥15.</summary>
+    public int TimeoutSeconds { get; set; } = 30;
 
     /// <summary>
     /// When false, failed moderation HTTP calls block content instead of allowing it through.

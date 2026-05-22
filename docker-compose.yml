@@ -18,11 +18,19 @@ services:
       - LOG_LEVEL=INFO
       - MODERATION_LOG_PREVIEW=true
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)"]
+      test:
+        - CMD
+        - python
+        - -c
+        - |
+          import json, sys, urllib.request
+          with urllib.request.urlopen("http://127.0.0.1:8000/health", timeout=15) as r:
+              b = json.load(r)
+          sys.exit(0 if b.get("image_ready") and b.get("text_ready") else 1)
       interval: 15s
-      timeout: 10s
-      retries: 5
-      start_period: 180s
+      timeout: 20s
+      retries: 8
+      start_period: 240s
 
   backend:
     build:
@@ -51,7 +59,7 @@ services:
       - 'UPLOADS_PATH=${UPLOADS_PATH:-/app/wwwroot}'
       - 'Moderation__BaseUrl=http://moderation:8000'
       - 'Moderation__Enabled=${MODERATION_ENABLED:-true}'
-      - 'Moderation__TimeoutSeconds=${MODERATION_TIMEOUT_SECONDS:-15}'
+      - 'Moderation__TimeoutSeconds=${MODERATION_TIMEOUT_SECONDS:-30}'
       - 'Moderation__FailOpen=${MODERATION_FAIL_OPEN:-false}'
     depends_on:
       db:
