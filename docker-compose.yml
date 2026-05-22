@@ -12,9 +12,9 @@ services:
       - TOKENIZERS_PARALLELISM=false
       - OMP_NUM_THREADS=2
       - NSFW_THRESHOLD=0.5
-      - TOXIC_THRESHOLD=0.72
-      - SHORT_TEXT_TOXIC_THRESHOLD=0.88
-      - TOXIC_LABELS=toxic,severe_toxic,obscene,threat,insult,identity_hate
+      - TOXIC_THRESHOLD=0.5
+      - SHORT_TEXT_TOXIC_THRESHOLD=0.55
+      - TOXIC_LABELS=toxic
       - LOG_LEVEL=INFO
       - MODERATION_LOG_PREVIEW=true
     healthcheck:

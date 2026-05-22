@@ -487,37 +487,54 @@ public class AiService : IAiService
         return iterationText.ToString();
     }
 
+    private const int TripGenerationMaxRounds = 8;
+
     private async Task<string> RunGenerationUntilJsonAsync(
         List<object> messages,
         string startMarker,
         string endMarker,
-        string jsonOnlyNudge,
-        int maxRounds = 5)
+        int maxRounds = TripGenerationMaxRounds)
     {
         var fullText = new StringBuilder();
 
         for (int round = 0; round < maxRounds; round++)
         {
-            Console.WriteLine($"[DEBUG] Generation round {round + 1}...");
+            _logger.LogInformation(
+                "Trip generation round {Round}/{MaxRounds} (web tools enabled)",
+                round + 1,
+                maxRounds);
+
             var roundText = await AccumulateGenerationStreamAsync(messages);
             fullText.Append(roundText);
 
             var accumulated = fullText.ToString();
             if (HasGenerationJsonMarkers(accumulated, startMarker, endMarker))
             {
-                Console.WriteLine($"[DEBUG] JSON markers found after round {round + 1}.");
+                _logger.LogInformation("JSON markers found after round {Round}", round + 1);
                 break;
             }
 
             if (round >= maxRounds - 1)
             {
-                Console.WriteLine("[DEBUG] Max generation rounds reached without JSON markers.");
+                _logger.LogWarning("Max generation rounds ({MaxRounds}) reached without JSON markers", maxRounds);
                 break;
             }
 
             var cleanedRound = StripModelArtifacts(roundText);
-            messages.Add(new { role = "assistant", content = cleanedRound.Length > 0 ? cleanedRound : "..." });
-            messages.Add(new { role = "user", content = jsonOnlyNudge });
+
+            messages.Add(new
+            {
+                role = "assistant",
+                content = string.IsNullOrWhiteSpace(cleanedRound) ? "(continuing trip generation)" : cleanedRound,
+            });
+
+            // Short continuation only — keeps tools on; avoids repeating the old "finished researching" nudge in logs.
+            messages.Add(new
+            {
+                role = "user",
+                content =
+                    $"Continue the same trip generation. When ready, include the full trip JSON between {startMarker} and {endMarker} as required in the system prompt.",
+            });
         }
 
         return fullText.ToString();
@@ -618,12 +635,7 @@ public class AiService : IAiService
         const string startMarker = "===TRIP_JSON_START===";
         const string endMarker = "===TRIP_JSON_END===";
 
-        var fullText = await RunGenerationUntilJsonAsync(
-            messages,
-            startMarker,
-            endMarker,
-            "You have finished researching. Output ONLY the complete trip JSON between ===TRIP_JSON_START=== and ===TRIP_JSON_END===. " +
-            "No planning text, no narration, no tool-call markup — just the JSON between the markers.");
+        var fullText = await RunGenerationUntilJsonAsync(messages, startMarker, endMarker);
 
         var jsonContent = ExtractGenerationJson(fullText, startMarker, endMarker, requireTimelines: true);
         return await DeserializeAndSave(jsonContent);
@@ -772,12 +784,7 @@ public class AiService : IAiService
         const string startMarker = "===OFFROAD_JSON_START===";
         const string endMarker = "===OFFROAD_JSON_END===";
 
-        var fullText = await RunGenerationUntilJsonAsync(
-            messages,
-            startMarker,
-            endMarker,
-            "You have finished researching. Output ONLY the complete off-road trip JSON between ===OFFROAD_JSON_START=== and ===OFFROAD_JSON_END===. " +
-            "No planning text, no narration, no tool-call markup — just the JSON between the markers.");
+        var fullText = await RunGenerationUntilJsonAsync(messages, startMarker, endMarker);
 
         var jsonContent = ExtractGenerationJson(fullText, startMarker, endMarker, requireTimelines: false);
         return await DeserializeAndSaveOffroadTrip(jsonContent);
