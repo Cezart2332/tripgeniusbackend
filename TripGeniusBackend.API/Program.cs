@@ -121,6 +121,9 @@ builder.Services.Configure<VapidSettings>(
 builder.Services.Configure<ModerationSettings>(
     builder.Configuration.GetSection("Moderation")
 );
+builder.Services.Configure<CorsSettings>(
+    builder.Configuration.GetSection("Cors")
+);
 //Application
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -255,11 +258,31 @@ builder.Services.AddOpenApi(options =>
     });
 });
 
+var corsOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>()?
+    .Where(static origin => !string.IsNullOrWhiteSpace(origin))
+    .Select(static origin => origin.Trim().TrimEnd('/'))
+    .Distinct(StringComparer.OrdinalIgnoreCase)
+    .ToArray() ?? [];
+
+if (corsOrigins.Length == 0)
+{
+    corsOrigins =
+    [
+        "https://tripgenius.online",
+        "https://www.tripgenius.online",
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:4173",
+    ];
+}
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("frontend", policy =>
     {
-        policy.WithOrigins("https://tripgenius.online","http://localhost:5173","http://localhost:5174", "http://localhost:4173")
+        policy.WithOrigins(corsOrigins)
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();
@@ -269,7 +292,7 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-
+app.Logger.LogInformation("CORS allowed origins: {Origins}", string.Join(", ", corsOrigins));
 
 app.MapOpenApi();
 app.MapScalarApiReference(); 
@@ -279,6 +302,8 @@ app.UseForwardedHeaders(new ForwardedHeadersOptions
 {
     ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
 });
+
+app.UseRouting();
 
 app.UseCors("frontend");
 //app.UseHsts();
@@ -306,10 +331,8 @@ app.UseMiddleware<ExceptionMiddleware>();
 app.UseMiddleware<LoggingMiddleware>();
 app.UseRateLimiter();
 
-
-app.UseAuthentication(); 
+app.UseAuthentication();
 app.UseAuthorization();
-
 
 app.MapHealthChecks("/health/ready", new HealthCheckOptions
 {
@@ -326,10 +349,12 @@ app.MapHealthChecks("/health", new HealthCheckOptions
 {
     Predicate = check => check.Tags.Contains("ready")
 });
-app.MapControllers().RequireRateLimiting("global");
-app.MapHub<TripChatHub>("/hubs/trip-chat");
-app.MapHub<OffroadTripChatHub>("/hubs/offroad-trip-chat");
-app.MapHub<AiChatHub>("/hubs/ai-chat");
+app.MapControllers()
+    .RequireRateLimiting("global")
+    .RequireCors("frontend");
+app.MapHub<TripChatHub>("/hubs/trip-chat").RequireCors("frontend");
+app.MapHub<OffroadTripChatHub>("/hubs/offroad-trip-chat").RequireCors("frontend");
+app.MapHub<AiChatHub>("/hubs/ai-chat").RequireCors("frontend");
 
 using var scope = app.Services.CreateScope();
 var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
