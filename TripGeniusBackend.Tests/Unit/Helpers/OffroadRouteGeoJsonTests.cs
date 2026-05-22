@@ -1,5 +1,6 @@
 using FluentAssertions;
 using TripGeniusBackend.Application.Helpers;
+using Xunit;
 
 namespace TripGeniusBackend.Tests.Unit.Helpers;
 
