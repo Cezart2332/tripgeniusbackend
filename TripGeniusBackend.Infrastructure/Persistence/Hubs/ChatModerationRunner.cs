@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using TripGeniusBackend.Application.Helpers;
 using TripGeniusBackend.Application.Interfaces.Services;
 using TripGeniusBackend.Application.Settings;
 
@@ -36,24 +35,9 @@ internal static class ChatModerationRunner
                 var logger = services.GetRequiredService<ILoggerFactory>()
                     .CreateLogger(nameof(ChatModerationRunner));
 
-                var blocked = ProfanityFilter.ContainsProfanity(content);
-                string? reason = blocked ? RejectionMessage : null;
-
-                if (!blocked)
-                {
-                    var moderation = services.GetRequiredService<IContentModerationService>();
-                    var result = await moderation.CheckTextAsync(content);
-                    blocked = result.IsBlocked;
-                    reason = result.Reason;
-                }
-                else
-                {
-                    logger.LogInformation(
-                        "Chat message {MessageId} blocked by local profanity filter.",
-                        messageId);
-                }
-
-                if (!blocked)
+                var moderation = services.GetRequiredService<IContentModerationService>();
+                var result = await moderation.CheckTextAsync(content);
+                if (!result.IsBlocked)
                     return;
 
                 var deleted = await tryDeleteMessageAsync(services, messageId);
@@ -65,7 +49,7 @@ internal static class ChatModerationRunner
                 await hubContext.Clients.Group(groupName).SendAsync("MessageRemoved", messageId);
                 await hubContext.Clients.User(senderUserId.ToString()).SendAsync(
                     "MessageRejected",
-                    new { messageId, message = reason ?? RejectionMessage });
+                    new { messageId, message = result.Reason ?? RejectionMessage });
             }
             catch (Exception ex)
             {

@@ -3,7 +3,6 @@ using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using TripGeniusBackend.Application.Helpers;
 using TripGeniusBackend.Application.Interfaces.Services;
 using TripGeniusBackend.Application.Settings;
 
@@ -31,14 +30,6 @@ public class ContentModerationService : IContentModerationService
     {
         if (!_settings.Enabled || !_settings.TextEnabled || string.IsNullOrWhiteSpace(text))
             return new ModerationCheckResult(false);
-
-        if (ProfanityFilter.ContainsProfanity(text))
-        {
-            _logger.LogInformation("Text blocked by local profanity filter.");
-            return new ModerationCheckResult(
-                true,
-                "Your message was flagged as inappropriate. Please revise and try again.");
-        }
 
         try
         {
