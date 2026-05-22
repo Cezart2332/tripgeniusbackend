@@ -43,8 +43,12 @@ services:
         VITE_VAPID_PUBLIC_KEY: ${VITE_VAPID_PUBLIC_KEY}
     container_name: tripgenius-frontend
     restart: always
-    ports:
-      - "${FRONTEND_PORT:-80}:80"
+    # Container listens on 80. Do not publish host :80 when Coolify/Traefik already uses it.
+    expose:
+      - "80"
+    # Local access without a reverse proxy: set FRONTEND_PUBLISH_PORT=8080 in .env and uncomment:
+    # ports:
+    #   - "${FRONTEND_PUBLISH_PORT:-8080}:80"
     healthcheck:
       test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/health || exit 1"]
       interval: 15s

@@ -8,6 +8,8 @@ namespace TripGeniusBackend.Infrastructure.Persistence.Services;
 
 public class PdfService : IPdfService
 {
+    private const string CurrencyCode = "EUR";
+
     public byte[] GenerateCostsPdf(Trip trip)
     {
         return Document.Create(container =>
@@ -48,7 +50,7 @@ public class PdfService : IPdfService
                         row.RelativeItem().Column(innerCol =>
                         {
                             innerCol.Item().Text("TOTAL ESTIMATED BUDGET").FontSize(10).SemiBold().FontColor(Colors.Grey.Medium);
-                            innerCol.Item().Text($"{total:N2} RON").FontSize(20).ExtraBold().FontColor(Colors.Indigo.Medium);
+                            innerCol.Item().Text($"{total:N2} {CurrencyCode}").FontSize(20).ExtraBold().FontColor(Colors.Indigo.Medium);
                         });
                         
                         row.RelativeItem().AlignRight().Column(innerCol =>
@@ -89,7 +91,7 @@ public class PdfService : IPdfService
                                 header.Cell().Element(CellStyle).Text("#");
                                 header.Cell().Element(CellStyle).Text("Activity");
                                 header.Cell().Element(CellStyle).Text("Type");
-                                header.Cell().Element(CellStyle).AlignRight().Text("Cost (RON)");
+                                header.Cell().Element(CellStyle).AlignRight().Text($"Cost ({CurrencyCode})");
 
                                 static IContainer CellStyle(IContainer container)
                                 {
@@ -107,7 +109,7 @@ public class PdfService : IPdfService
                                 table.Cell().Element(RowStyle).Text(index++.ToString());
                                 table.Cell().Element(RowStyle).Text(activity.Name);
                                 table.Cell().Element(RowStyle).Text(activity.Type.ToString());
-                                table.Cell().Element(RowStyle).AlignRight().Text($"{activity.Cost:N2}");
+                                table.Cell().Element(RowStyle).AlignRight().Text($"{activity.Cost:N2} {CurrencyCode}");
 
                                 static IContainer RowStyle(IContainer container)
                                 {
@@ -120,7 +122,7 @@ public class PdfService : IPdfService
                             // Subtotal
                             var subtotal = activitiesWithCosts.Sum(a => a.Cost ?? 0);
                             table.Cell().ColumnSpan(3).AlignRight().PaddingVertical(10).Text("Daily Subtotal:").SemiBold();
-                            table.Cell().AlignRight().PaddingVertical(10).Text($"{subtotal:N2}").SemiBold().FontColor(Colors.Indigo.Medium);
+                            table.Cell().AlignRight().PaddingVertical(10).Text($"{subtotal:N2} {CurrencyCode}").SemiBold().FontColor(Colors.Indigo.Medium);
                         });
                     }
                 });
