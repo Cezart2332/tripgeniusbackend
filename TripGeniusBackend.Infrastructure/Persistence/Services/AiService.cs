@@ -520,20 +520,22 @@ public class AiService : IAiService
                 break;
             }
 
-            var cleanedRound = StripModelArtifacts(roundText);
-
-            messages.Add(new
+            var historyContent = PrepareAssistantHistoryContent(roundText);
+            if (string.IsNullOrWhiteSpace(historyContent))
+                historyContent = PrepareAssistantHistoryContent(accumulated);
+            if (string.IsNullOrWhiteSpace(historyContent))
             {
-                role = "assistant",
-                content = string.IsNullOrWhiteSpace(cleanedRound) ? "(continuing trip generation)" : cleanedRound,
-            });
+                _logger.LogWarning("Generation round {Round} had no visible text after tool use", round + 1);
+                historyContent =
+                    "I finished the web searches for this trip. Continuing the visible day-by-day plan out loud now.";
+            }
 
-            // Short continuation only — keeps tools on; avoids repeating the old "finished researching" nudge in logs.
+            messages.Add(new { role = "assistant", content = historyContent });
+
             messages.Add(new
             {
                 role = "user",
-                content =
-                    $"Continue the same trip generation. When ready, include the full trip JSON between {startMarker} and {endMarker} as required in the system prompt.",
+                content = BuildGenerationContinuePrompt(startMarker, endMarker),
             });
         }
 
@@ -576,6 +578,31 @@ public class AiService : IAiService
         }
 
         throw new Exception($"Nu s-a găsit JSON. Preview: {fullText[..Math.Min(300, fullText.Length)]}");
+    }
+
+    private static string BuildGenerationContinuePrompt(string startMarker, string endMarker) =>
+        "Continue the same trip generation. Think out loud exactly as in your first reply — " +
+        "explain routes, trails, choices, and trade-offs in plain language while you search the web if you still need facts. " +
+        "Do not reply with only a short placeholder. " +
+        $"When the plan is complete, include the full trip JSON between {startMarker} and {endMarker}.";
+
+    /// <summary>
+    /// Keeps visible planning / reasoning for the next API turn. Unlike <see cref="StripModelArtifacts"/>,
+    /// unwraps &lt;redacted_thinking&gt; instead of discarding it (tool-only rounds otherwise become empty).
+    /// </summary>
+    private static string PrepareAssistantHistoryContent(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return text;
+
+        text = Regex.Replace(text, @"<｜｜DSML｜｜tool_calls>[\s\S]*?</｜｜DSML｜｜tool_calls>", "", RegexOptions.IgnoreCase);
+        text = Regex.Replace(text, @"<\|[^|]*\|[^|]*tool_calls>[\s\S]*?</\|[^|]*\|[^|]*tool_calls>", "", RegexOptions.IgnoreCase);
+        text = Regex.Replace(
+            text,
+            @"<think>([\s\S]*?)</think>",
+            "$1",
+            RegexOptions.IgnoreCase);
+
+        return text.Trim();
     }
 
     private static string StripModelArtifacts(string text)
@@ -656,7 +683,7 @@ public class AiService : IAiService
             ?? throw new Exception("Deserializare eșuată.");
 
         await FillCoordsAsync(tripRequest);
-        var tripId = await _tripService.CreateTrip(tripRequest);
+        var tripId = await _tripService.CreateTrip(tripRequest, skipContentModeration: true);
         Console.WriteLine($"[DEBUG] Trip '{tripRequest.Title}' creat cu succes! (id={tripId})");
         await NotifyAiTripCreatedAsync(tripId, tripRequest.Title, isOffroad: false);
         return tripId;
@@ -862,7 +889,7 @@ public class AiService : IAiService
             Routes = routeRequests
         };
 
-        var tripId = await _offroadTripService.CreateTrip(tripRequest);
+        var tripId = await _offroadTripService.CreateTrip(tripRequest, skipContentModeration: true);
         Console.WriteLine($"[DEBUG] Offroad trip '{tripRequest.Title}' created successfully! (id={tripId})");
         await NotifyAiTripCreatedAsync(tripId, tripRequest.Title, isOffroad: true);
         return tripId;

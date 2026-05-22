@@ -52,7 +52,7 @@ public class OffroadTripService : IOffroadTripService
         _backgroundModeration = backgroundModeration;
     }
 
-    public async Task<int> CreateTrip(OffroadTripRequest request)
+    public async Task<int> CreateTrip(OffroadTripRequest request, bool skipContentModeration = false)
     {
         if (request == null) throw new ArgumentNullException(nameof(request));
         var userId = _jwtService.GetUserId();
@@ -83,14 +83,17 @@ public class OffroadTripService : IOffroadTripService
         }
         await _tripRepository.SaveChanges();
 
-        _backgroundModeration.ScheduleTextReview(
-            ModerationTarget.OffroadTripDetails,
-            userId,
-            trip.Id,
-            ModerationFields.ToReviewList(ModerationFields.FromOffroadTripRequest(request)));
-        if (imageBytes is { Length: > 0 })
-            _backgroundModeration.ScheduleImageReview(
-                ModerationTarget.OffroadTripCover, userId, trip.Id, imageBytes, ImageContentType(request.ImageFileName));
+        if (!skipContentModeration)
+        {
+            _backgroundModeration.ScheduleTextReview(
+                ModerationTarget.OffroadTripDetails,
+                userId,
+                trip.Id,
+                ModerationFields.ToReviewList(ModerationFields.FromOffroadTripRequest(request)));
+            if (imageBytes is { Length: > 0 })
+                _backgroundModeration.ScheduleImageReview(
+                    ModerationTarget.OffroadTripCover, userId, trip.Id, imageBytes, ImageContentType(request.ImageFileName));
+        }
 
         ScheduleEmbeddingUpdate(trip.Id);
         return trip.Id;

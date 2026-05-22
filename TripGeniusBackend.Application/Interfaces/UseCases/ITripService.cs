@@ -5,7 +5,7 @@ namespace TripGeniusBackend.Application.Interfaces.UseCases;
 
 public interface ITripService
 {
-    public Task<int> CreateTrip(TripRequest tripRequest);
+    public Task<int> CreateTrip(TripRequest tripRequest, bool skipContentModeration = false);
     public Task <List<TripResponse>> GetTripsForUser(TripsRequest tripsRequest);
     public Task<List<TripResponse>> GetTrips();
     public Task<TripResponse> GetTrip(int id);

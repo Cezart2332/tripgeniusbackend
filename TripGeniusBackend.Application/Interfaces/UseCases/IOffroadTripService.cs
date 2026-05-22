@@ -5,7 +5,7 @@ namespace TripGeniusBackend.Application.Interfaces.UseCases;
 
 public interface IOffroadTripService
 {
-    Task<int> CreateTrip(OffroadTripRequest request);
+    Task<int> CreateTrip(OffroadTripRequest request, bool skipContentModeration = false);
     Task<List<OffroadTripResponse>> GetTripsForUser(OffroadTripsRequest request);
     Task<List<OffroadTripResponse>> GetTrips();
     Task<OffroadTripResponse> GetTrip(int id);

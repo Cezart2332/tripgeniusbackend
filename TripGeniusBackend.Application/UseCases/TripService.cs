@@ -41,7 +41,7 @@ public class TripService : ITripService
         _backgroundModeration = backgroundModeration;
     }
 
-    public async Task<int> CreateTrip(TripRequest tripRequest)
+    public async Task<int> CreateTrip(TripRequest tripRequest, bool skipContentModeration = false)
     {
         if(tripRequest == null) throw new ArgumentNullException("Trip request is null");
         int userId = _jwtService.GetUserId();
@@ -74,14 +74,17 @@ public class TripService : ITripService
         }
         await _tripRepository.SaveChanges();
 
-        _backgroundModeration.ScheduleTextReview(
-            ModerationTarget.TripDetails,
-            userId,
-            trip.Id,
-            ModerationFields.ToReviewList(ModerationFields.FromTripRequest(tripRequest)));
-        if (imageBytes is { Length: > 0 })
-            _backgroundModeration.ScheduleImageReview(
-                ModerationTarget.TripCover, userId, trip.Id, imageBytes, ImageContentType(tripRequest.ImageFileName));
+        if (!skipContentModeration)
+        {
+            _backgroundModeration.ScheduleTextReview(
+                ModerationTarget.TripDetails,
+                userId,
+                trip.Id,
+                ModerationFields.ToReviewList(ModerationFields.FromTripRequest(tripRequest)));
+            if (imageBytes is { Length: > 0 })
+                _backgroundModeration.ScheduleImageReview(
+                    ModerationTarget.TripCover, userId, trip.Id, imageBytes, ImageContentType(tripRequest.ImageFileName));
+        }
         _ = Task.Run(async () =>
         {
             using var scope = _scopeFactory.CreateScope();
