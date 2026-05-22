@@ -3,6 +3,7 @@ using Pgvector;
 using TripGeniusBackend.Application.DTOs.OffroadTrip;
 using TripGeniusBackend.Application.DTOs.Trip;
 using TripGeniusBackend.Application.Exceptions;
+using TripGeniusBackend.Application.Helpers;
 using TripGeniusBackend.Application.Interfaces;
 using TripGeniusBackend.Application.Interfaces.Queries;
 using TripGeniusBackend.Application.Interfaces.Repositories;
@@ -56,7 +57,8 @@ public class OffroadTripService : IOffroadTripService
 
         foreach (var route in request.Routes)
         {
-            trip.AddRoute(route.StartDay, route.EndDay, route.Name, route.Note, route.TrackGeoJson,
+            trip.AddRoute(route.StartDay, route.EndDay, route.Name, route.Note,
+                OffroadRouteGeoJson.NormalizeForStorage(route.TrackGeoJson),
                 route.Source, route.DistanceMeters, route.ElevationGainMeters);
         }
 
@@ -212,10 +214,8 @@ public class OffroadTripService : IOffroadTripService
                 parsed.ElevationGainMeters, parsed.OriginalGpx);
         }
 
-        if (string.IsNullOrWhiteSpace(request.TrackGeoJson))
-            throw new ArgumentException("TrackGeoJson or GPX file is required.");
-
-        return (request.TrackGeoJson, request.Source, request.DistanceMeters, request.ElevationGainMeters, null);
+        return (OffroadRouteGeoJson.NormalizeForStorage(request.TrackGeoJson), request.Source,
+            request.DistanceMeters, request.ElevationGainMeters, null);
     }
 
     private async Task<OffroadTrip> RequireOwnerTrip(int tripId, int userId)
