@@ -270,7 +270,7 @@ public class AiService : IAiService
         _httpClient = httpClient;
         var settings = openRouterSettings.Value;
         _apiKey = settings.ApiKey;
-        _chatModel = string.IsNullOrWhiteSpace(settings.ChatModel) ? "deepseek/deepseek-v4-flash" : settings.ChatModel;
+        _chatModel = string.IsNullOrWhiteSpace(settings.ChatModel) ? "google/gemini-2.5-flash" : settings.ChatModel;
         _chatWebMaxResults = settings.ChatWebMaxResults > 0 ? settings.ChatWebMaxResults : 5;
         _logger = logger;
         _geocodingService = geocodingService;
