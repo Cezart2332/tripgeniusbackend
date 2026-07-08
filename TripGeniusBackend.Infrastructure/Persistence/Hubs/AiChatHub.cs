@@ -1,6 +1,7 @@
 ﻿using System.Security.Claims;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -14,6 +15,7 @@ using TripGeniusBackend.Infrastructure.Persistence.Services;
 
 namespace TripGeniusBackend.Infrastructure.Persistence.Hubs;
 
+[Authorize]
 public class AiChatHub : Hub
 {
     private readonly IAiChatRepository _aiChatRepository;
@@ -54,15 +56,23 @@ public class AiChatHub : Hub
         _logger = logger;
     }
 
+    private int GetUserId()
+    {
+        var value = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!int.TryParse(value, out var userId))
+            throw new HubException("Unauthorized");
+        return userId;
+    }
+
     public async Task JoinAiChat()
     {
-        var userId = int.Parse(Context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+        var userId = GetUserId();
         await Groups.AddToGroupAsync(Context.ConnectionId, userId.ToString());
 
     }
     public async Task LeaveAiChat()
     {
-        var userId = int.Parse(Context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+        var userId = GetUserId();
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, userId.ToString());
     }
 
@@ -145,10 +155,10 @@ public class AiChatHub : Hub
 
     public async Task SendAiMessage(string content, bool preferProfile)
     {
-        var userId = int.Parse(Context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+        var userId = GetUserId();
         var user = await _userRepository.GetUserById(userId);
-        var preferences = user?.Preferences;
         if (user == null) throw new KeyNotFoundException("User not found");
+        var preferences = user.Preferences;
         // Load history before persisting this turn so AskAsync does not see the same user text twice.
         var lastMessages = await _aiChatQueryService.GetShortTermMemory(userId);
 
@@ -286,21 +296,25 @@ public class AiChatHub : Hub
         IAiService _aiService)
     {
         
-            string extractionPrompt = """
-                                      You are a memory extraction assistant. Analyze the conversation below and extract ONLY information worth remembering about the user's travel preferences, plans, or personal facts.
+            string extractionPrompt = $$"""
+                You are a memory extraction assistant. Analyze the conversation below and extract ONLY information worth remembering about the user's travel preferences, plans, or personal facts.
 
-                                      RULES:
-                                      - Extract preferences (e.g. "prefers mountains over beach", "likes budget travel")
-                                      - Extract travel plans (e.g. "wants to visit Japan next summer")
-                                      - Extract personal facts relevant to travel (e.g. "travels with family", "afraid of flying")
-                                      - Store the memory in the SAME LANGUAGE the user used in the conversation
-                                      - If nothing is worth remembering, return empty array
-                                      - Be concise — each memory should be one short sentence
-                                      - Do NOT extract generic information or AI responses
+                RULES:
+                - Extract preferences (e.g. "prefers mountains over beach", "likes budget travel")
+                - Extract travel plans (e.g. "wants to visit Japan next summer")
+                - Extract personal facts relevant to travel (e.g. "travels with family", "afraid of flying")
+                - Store the memory in the SAME LANGUAGE the user used in the conversation
+                - If nothing is worth remembering, return an empty array
+                - Be concise — each memory should be one short sentence
+                - Do NOT extract generic information or AI responses
 
-                                      Conversation:
-                                      User: 
-                                      """ + userMessage + """Respond ONLY with valid JSON, no extra text, no markdown:{"memories": ["memory1", "memory2"]""";
+                Conversation:
+                User: {{userMessage}}
+                Assistant: {{aiResponse}}
+
+                Respond ONLY with valid JSON, no extra text, no markdown:
+                {"memories": ["memory1", "memory2"]}
+                """;
             string extractedJson = "";
             extractedJson = await _aiService.ExtractAsync(extractionPrompt);
 

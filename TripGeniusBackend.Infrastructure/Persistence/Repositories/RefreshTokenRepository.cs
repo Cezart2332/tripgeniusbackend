@@ -19,6 +19,16 @@ public class RefreshTokenRepository : IRefreshTokenRepository
         _context.RefreshTokens.RemoveRange(tokens);
         await _context.SaveChangesAsync();
     }
+
+    public async Task DeleteExpiredRefreshTokens(int userId)
+    {
+        var expired = await _context.RefreshTokens
+            .Where(t => t.UserId == userId && t.Expires < DateTime.UtcNow)
+            .ToListAsync();
+        if (expired.Count == 0) return;
+        _context.RefreshTokens.RemoveRange(expired);
+        await _context.SaveChangesAsync();
+    }
     
     public async Task AddRefreshToken(RefreshToken refreshToken)
     {

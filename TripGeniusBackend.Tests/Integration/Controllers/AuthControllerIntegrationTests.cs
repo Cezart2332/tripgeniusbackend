@@ -69,6 +69,68 @@ public class AuthControllerIntegrationTests : IClassFixture<TripGeniusWebApplica
     }
 
     [Fact]
+    public async Task Register_ReplayedWithSameIdempotencyKey_ReplaysResponseAndCreatesOneUser()
+    {
+        // Arrange
+        var registerRequest = new RegisterRequest
+        {
+            Email = "idempotency@example.com",
+            Password = "SecurePassword123!",
+            Username = "idemuser",
+            MaxGroupSize = 4,
+            Tags = new List<string>()
+        };
+        var key = Guid.NewGuid().ToString();
+
+        // Act - same request twice with the same Idempotency-Key
+        var first = await PostWithIdempotencyKey("/api/auth/register", registerRequest, key);
+        var second = await PostWithIdempotencyKey("/api/auth/register", registerRequest, key);
+
+        // Assert - the replay returns the cached success, not the "email exists" 400
+        first.StatusCode.Should().Be(HttpStatusCode.OK);
+        second.StatusCode.Should().Be(HttpStatusCode.OK);
+        second.Headers.Contains("Idempotent-Replayed").Should().BeTrue();
+
+        // And the mutation was applied exactly once
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var count = await db.Users.CountAsync(u => u.Email == "idempotency@example.com");
+        count.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Register_ReplayedWithoutIdempotencyKey_ReturnsDuplicateError()
+    {
+        // Arrange
+        var registerRequest = new RegisterRequest
+        {
+            Email = "no-idem-key@example.com",
+            Password = "SecurePassword123!",
+            Username = "noidem",
+            MaxGroupSize = 4,
+            Tags = new List<string>()
+        };
+
+        // Act - without the header, the second call is a real duplicate
+        var first = await _client.PostAsJsonAsync("/api/auth/register", registerRequest);
+        var second = await _client.PostAsJsonAsync("/api/auth/register", registerRequest);
+
+        // Assert
+        first.StatusCode.Should().Be(HttpStatusCode.OK);
+        second.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    private async Task<HttpResponseMessage> PostWithIdempotencyKey<T>(string url, T body, string key)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, url)
+        {
+            Content = JsonContent.Create(body)
+        };
+        request.Headers.Add("Idempotency-Key", key);
+        return await _client.SendAsync(request);
+    }
+
+    [Fact]
     public async Task Register_WithMissingEmail_ReturnsBadRequest()
     {
         // Arrange

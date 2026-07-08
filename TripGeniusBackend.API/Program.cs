@@ -50,22 +50,30 @@ builder.Configuration
 
 builder.Services.AddRateLimiter(options =>
 {
-    // Politica globală — 30 requests / minut per IP
-    options.AddFixedWindowLimiter("global", opt =>
-    {
-        opt.PermitLimit = 30;
-        opt.Window = TimeSpan.FromMinutes(1);
-        opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-        opt.QueueLimit = 0;
-    });
+    static string PartitionKey(HttpContext ctx) =>
+        ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
-    // Politica pentru auth — mai strictă (5 requests / minut)
-    options.AddFixedWindowLimiter("auth", opt =>
-    {
-        opt.PermitLimit = 5;
-        opt.Window = TimeSpan.FromMinutes(1);
-        opt.QueueLimit = 0;
-    });
+    // Politica globală — 30 requests / minut per IP
+    options.AddPolicy("global", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(PartitionKey(httpContext), _ =>
+            new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 30,
+                Window = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0,
+            }));
+
+    // Politica pentru auth — mai strictă (5 requests / minut per IP)
+    options.AddPolicy("auth", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter("auth-" + PartitionKey(httpContext), _ =>
+            new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0,
+            }));
 
     // Ce returnezi când e blocat
     options.OnRejected = async (context, token) =>
@@ -269,14 +277,20 @@ var corsOrigins = builder.Configuration
 
 if (corsOrigins.Length == 0)
 {
-    corsOrigins =
-    [
-        "https://tripgenius.online",
-        "https://www.tripgenius.online",
-        "http://localhost:5173",
-        "http://localhost:5174",
-        "http://localhost:4173",
-    ];
+    if (builder.Environment.IsDevelopment())
+    {
+        corsOrigins =
+        [
+            "http://localhost:5173",
+            "http://localhost:5174",
+            "http://localhost:4173",
+        ];
+    }
+    else
+    {
+        throw new InvalidOperationException(
+            "Cors:AllowedOrigins must be configured in non-development environments.");
+    }
 }
 
 builder.Services.AddCors(options =>
@@ -299,10 +313,17 @@ app.MapOpenApi();
 app.MapScalarApiReference(); 
 
 
-app.UseForwardedHeaders(new ForwardedHeadersOptions
+var forwardedOptions = new ForwardedHeadersOptions
 {
     ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
-});
+};
+// The app is only reachable through the reverse proxy (nginx), which runs on a
+// non-loopback container IP. Clear the default trusted list so X-Forwarded-For is
+// honored and RemoteIpAddress reflects the real client (needed for per-IP rate limiting).
+// If the backend is ever exposed directly, restrict this to the proxy's network instead.
+forwardedOptions.KnownNetworks.Clear();
+forwardedOptions.KnownProxies.Clear();
+app.UseForwardedHeaders(forwardedOptions);
 
 app.UseRouting();
 
@@ -321,11 +342,16 @@ app.UseStaticFiles(new StaticFileOptions
     FileProvider = new PhysicalFileProvider(uploadsPath),
     RequestPath = ""
 });
+// TLS is terminated at the reverse proxy (nginx), which is responsible for the
+// HTTP->HTTPS redirect. We still emit HSTS in non-dev so browsers pin HTTPS.
+var enableHsts = !app.Environment.IsDevelopment();
 app.Use(async (ctx, next) =>
 {
     ctx.Response.Headers.Append("X-Content-Type-Options", "nosniff");
     ctx.Response.Headers.Append("X-Frame-Options", "DENY");
     ctx.Response.Headers.Append("X-XSS-Protection", "1; mode=block");
+    if (enableHsts)
+        ctx.Response.Headers.Append("Strict-Transport-Security", "max-age=63072000; includeSubDomains");
     await next();
 });
 app.UseMiddleware<ExceptionMiddleware>(); 
@@ -334,6 +360,10 @@ app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// De-duplicates replayed mutations carrying an Idempotency-Key (e.g. from the
+// frontend offline queue). Runs after auth so keys are scoped to the user.
+app.UseMiddleware<IdempotencyMiddleware>();
 
 app.MapHealthChecks("/health/ready", new HealthCheckOptions
 {

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using TripGeniusBackend.Application.DTOs.Auth;
 using TripGeniusBackend.Application.Interfaces;
 using TripGeniusBackend.Application.Interfaces.UseCases;
@@ -7,6 +8,7 @@ namespace TripGeniusBackend.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[EnableRateLimiting("auth")]
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
@@ -48,14 +50,12 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> Refresh()
     {
         var refreshToken = Request.Cookies["refreshToken"];
-        Console.WriteLine($"Refresh token: {refreshToken}");
         try
         {
             return Ok(await _authService.RefreshToken(refreshToken));
         }
         catch (ArgumentException e)
         {
-            Console.WriteLine(e.Message);
             return BadRequest(new { message = e.Message });
         }
     }

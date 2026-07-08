@@ -1,13 +1,16 @@
 ﻿using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using TripGeniusBackend.Application.DTOs.Trip;
 using TripGeniusBackend.Application.Interfaces;
 using TripGeniusBackend.Application.Interfaces.Repositories;
 using TripGeniusBackend.Domain.Entities;
+using TripGeniusBackend.Domain.Enums;
 
 namespace TripGeniusBackend.Infrastructure.Persistence.Hubs;
 
+[Authorize]
 public class TripChatHub : Hub
 {
     private readonly IServiceScopeFactory _scopeFactory;
@@ -19,8 +22,28 @@ public class TripChatHub : Hub
         _hubContext = hubContext;
     }
 
+    private int GetUserId()
+    {
+        var value = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!int.TryParse(value, out var userId))
+            throw new HubException("Unauthorized");
+        return userId;
+    }
+
+    private static async Task EnsureMemberAsync(ITripRepository tripRepository, int tripId, int userId)
+    {
+        var trip = await tripRepository.GetTripById(tripId);
+        if (trip == null)
+            throw new HubException("Trip not found");
+        if (!trip.Members.Any(m => m.UserId == userId && m.MemberStatus == MemberStatus.Accepted))
+            throw new HubException("You are not a member of this trip");
+    }
+
     public async Task JoinTrip(int tripId)
     {
+        using var scope = _scopeFactory.CreateScope();
+        var tripRepository = scope.ServiceProvider.GetRequiredService<ITripRepository>();
+        await EnsureMemberAsync(tripRepository, tripId, GetUserId());
         await Groups.AddToGroupAsync(Context.ConnectionId, $"trip-{tripId}");
     }
 
@@ -34,8 +57,10 @@ public class TripChatHub : Hub
         using var scope = _scopeFactory.CreateScope();
         var userRepository = scope.ServiceProvider.GetRequiredService<IUserRepository>();
         var messageRepository = scope.ServiceProvider.GetRequiredService<IMessageRepository>();
+        var tripRepository = scope.ServiceProvider.GetRequiredService<ITripRepository>();
 
-        var userId = int.Parse(Context.User!.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var userId = GetUserId();
+        await EnsureMemberAsync(tripRepository, tripId, userId);
         var user = await userRepository.GetUserById(userId);
         if (user == null)
             throw new KeyNotFoundException("User not found");

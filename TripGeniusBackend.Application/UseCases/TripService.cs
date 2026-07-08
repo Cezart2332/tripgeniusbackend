@@ -85,31 +85,7 @@ public class TripService : ITripService
                 _backgroundModeration.ScheduleImageReview(
                     ModerationTarget.TripCover, userId, trip.Id, imageBytes, ImageContentType(tripRequest.ImageFileName));
         }
-        _ = Task.Run(async () =>
-        {
-            using var scope = _scopeFactory.CreateScope();
-            var embeddingService = scope.ServiceProvider.GetRequiredService<IEmbeddingService>();
-            var tripRepository = scope.ServiceProvider.GetRequiredService<ITripRepository>();
-            string timelineString = "";
-            string activitesString = "Activites:";
-            foreach (var timeline in trip.Timelines)
-            {
-                timelineString += $"{timeline.StartDay},{timeline.EndDay}, {timeline.StartingPoint}, {timeline.FromCoords}, {timeline.EndPoint}, {timeline.ToCoords}, {timeline.Note}, ";
-                
-                foreach (var activity in timeline.Activities)
-                {
-                    activitesString += $"{activity.Name}, {activity.Description}, {activity.Link}, {activity.Cost}, {activity.Type}, ";
-                }
-                timelineString += activitesString;
-            }
-
-            var text =
-                $"{trip.Title}. {trip.Description}. {string.Join(",", trip.Tags)}. {trip.Price}. {trip.MaxParticipants}. {timelineString}";
-            var embedding = await embeddingService.GetEmbedding(text);
-            var freshTrip = await tripRepository.GetTripById(trip.Id);
-            freshTrip.UpdateEmbedding(new Vector(embedding));
-            await tripRepository.SaveChanges();
-        });
+        ScheduleTripEmbeddingRefresh(trip.Id);
         return trip.Id;
     }
 
@@ -117,7 +93,6 @@ public class TripService : ITripService
     public async Task<List<TripResponse>> GetTripsForUser(TripsRequest tripsRequest)
     {
         int userId = _jwtService.GetUserId();
-        if(userId == null) throw new KeyNotFoundException("User not found");
         var trips = await _tripQueryService.GetTripsForUser(userId, tripsRequest);
         
         return trips;
@@ -146,7 +121,9 @@ public class TripService : ITripService
         if(trip == null) throw new KeyNotFoundException("Trip not found");
         if(trip.Members.Any(m => m.UserId == invitedId)) throw new ArgumentException("User is already a member of this trip");
         if(trip.Members.Count == trip.MaxParticipants) throw new AppException(402,"Trip is full");
-        int ownerId = trip.Members.FirstOrDefault(m => m.Role == Roles.Owner).UserId;
+        var ownerMember = trip.Members.FirstOrDefault(m => m.Role == Roles.Owner);
+        if(ownerMember == null) throw new KeyNotFoundException("Trip owner not found");
+        int ownerId = ownerMember.UserId;
         var owner = await _userRepository.GetUserById(ownerId);
         if (userId == invitedId)
         {
@@ -172,15 +149,17 @@ public class TripService : ITripService
 
     public async Task MembershipResponse(int tripId, int invitedId, string status,string action)
     {
-        Console.WriteLine(status);
-        Console.WriteLine(action);
         if(action == null) throw new ArgumentException("Action is null");
         if(status == null) throw new ArgumentException("Status is null");
         var invited = await _userRepository.GetUserById(invitedId);
+        if(invited == null) throw new KeyNotFoundException("User not found");
         var trip = await _tripRepository.GetTripById(tripId);
-        int ownerId = trip.Members.FirstOrDefault(m => m.Role == Roles.Owner).UserId;
-        var owner = await _userRepository.GetUserById(ownerId);
         if(trip == null) throw new KeyNotFoundException("Trip not found");
+        var ownerMember = trip.Members.FirstOrDefault(m => m.Role == Roles.Owner);
+        if(ownerMember == null) throw new KeyNotFoundException("Trip owner not found");
+        int ownerId = ownerMember.UserId;
+        var owner = await _userRepository.GetUserById(ownerId);
+        if(owner == null) throw new KeyNotFoundException("Trip owner not found");
         if(trip.Members.Count == trip.MaxParticipants) throw new AppException(402,"Trip is full");
         var member = trip.Members.FirstOrDefault(m => m.UserId == invitedId);
         if(member == null) throw new KeyNotFoundException("Member not found");
@@ -239,7 +218,6 @@ public class TripService : ITripService
     public async Task RemoveMember(int tripId, int removedId)
     {
         int userId = _jwtService.GetUserId();
-        Console.WriteLine(userId);
         var trip = await _tripRepository.GetTripById(tripId);
         if(trip == null) throw new KeyNotFoundException("Trip not found");
         var remover = trip.Members.FirstOrDefault(m => m.UserId == userId);
@@ -257,7 +235,6 @@ public class TripService : ITripService
     }
     public async Task UpdateMember(UpdateRoleRequest updateRoleRequest)
     {
-        Console.WriteLine(updateRoleRequest.TripId);
         int userId = _jwtService.GetUserId();
         int tripId = updateRoleRequest.TripId;
         int updatedId = updateRoleRequest.Id;
@@ -303,31 +280,7 @@ public class TripService : ITripService
         if (imageBytes is { Length: > 0 })
             _backgroundModeration.ScheduleImageReview(
                 ModerationTarget.TripCover, userId, trip.Id, imageBytes, ImageContentType(UpdateTripRequest.ImageFileName));
-        _ = Task.Run(async () =>
-        {
-            using var scope = _scopeFactory.CreateScope();
-            var embeddingService = scope.ServiceProvider.GetRequiredService<IEmbeddingService>();
-            var tripRepository = scope.ServiceProvider.GetRequiredService<ITripRepository>();
-            string timelineString = "";
-            string activitesString = "Activites:";
-            foreach (var timeline in trip.Timelines)
-            {
-                timelineString += $"{timeline.StartDay},{timeline.EndDay}, {timeline.StartingPoint}, {timeline.FromCoords}, {timeline.EndPoint}, {timeline.ToCoords}, {timeline.Note}, ";
-                
-                foreach (var activity in timeline.Activities)
-                {
-                    activitesString += $"{activity.Name}, {activity.Description}, {activity.Link}, {activity.Cost}, {activity.Type}, ";
-                }
-                timelineString += activitesString;
-            }
-
-            var text =
-                $"{trip.Title}. {trip.Description}. {string.Join(",", trip.Tags)}. {trip.Price}. {trip.MaxParticipants}. {timelineString}";
-            var embedding = await embeddingService.GetEmbedding(text);
-            var freshTrip = await tripRepository.GetTripById(trip.Id);
-            freshTrip.UpdateEmbedding(new Vector(embedding));
-            await tripRepository.SaveChanges();
-        });
+        ScheduleTripEmbeddingRefresh(trip.Id);
         return await _tripQueryService.GetTrip(trip.Id,userId);
         
     }
@@ -361,31 +314,7 @@ public class TripService : ITripService
             ModerationFields.ToReviewList(ModerationFields.FromTimeline(updateTimelineRequest)),
             updateTimelineRequest.Id);
 
-        _ = Task.Run(async () =>
-        {
-            using var scope = _scopeFactory.CreateScope();
-            var embeddingService = scope.ServiceProvider.GetRequiredService<IEmbeddingService>();
-            var tripRepository = scope.ServiceProvider.GetRequiredService<ITripRepository>();
-            string timelineString = "";
-            string activitesString = "Activites:";
-            foreach (var timeline in trip.Timelines)
-            {
-                timelineString += $"{timeline.StartDay},{timeline.EndDay}, {timeline.StartingPoint}, {timeline.FromCoords}, {timeline.EndPoint}, {timeline.ToCoords}, {timeline.Note}, ";
-                
-                foreach (var activity in timeline.Activities)
-                {
-                    activitesString += $"{activity.Name}, {activity.Description}, {activity.Link}, {activity.Cost}, {activity.Type}, ";
-                }
-                timelineString += activitesString;
-            }
-
-            var text =
-                $"{trip.Title}. {trip.Description}. {string.Join(",", trip.Tags)}. {trip.Price}. {trip.MaxParticipants}. {timelineString}";
-            var embedding = await embeddingService.GetEmbedding(text);
-            var freshTrip = await tripRepository.GetTripById(trip.Id);
-            freshTrip.UpdateEmbedding(new Vector(embedding));
-            await tripRepository.SaveChanges();
-        });
+        ScheduleTripEmbeddingRefresh(trip.Id);
         return await _tripQueryService.GetTimeline(id);
     }
 
@@ -400,31 +329,7 @@ public class TripService : ITripService
         if(!isOwner) throw new UnauthorizedAccessException("You are not authorized to do this");
         trip.RemoveTimeline(id);
         await _tripRepository.SaveChanges();
-        _ = Task.Run(async () =>
-        {
-            using var scope = _scopeFactory.CreateScope();
-            var embeddingService = scope.ServiceProvider.GetRequiredService<IEmbeddingService>();
-            var tripRepository = scope.ServiceProvider.GetRequiredService<ITripRepository>();
-            string timelineString = "";
-            string activitesString = "Activites:";
-            foreach (var timeline in trip.Timelines)
-            {
-                timelineString += $"{timeline.StartDay},{timeline.EndDay}, {timeline.StartingPoint}, {timeline.FromCoords}, {timeline.EndPoint}, {timeline.ToCoords}, {timeline.Note}, ";
-                
-                foreach (var activity in timeline.Activities)
-                {
-                    activitesString += $"{activity.Name}, {activity.Description}, {activity.Link}, {activity.Cost}, {activity.Type}, ";
-                }
-                timelineString += activitesString;
-            }
-
-            var text =
-                $"{trip.Title}. {trip.Description}. {string.Join(",", trip.Tags)}. {trip.Price}. {trip.MaxParticipants}. {timelineString}";
-            var embedding = await embeddingService.GetEmbedding(text);
-            var freshTrip = await tripRepository.GetTripById(trip.Id);
-            freshTrip.UpdateEmbedding(new Vector(embedding));
-            await tripRepository.SaveChanges();
-        });
+        ScheduleTripEmbeddingRefresh(trip.Id);
     }
 
     public async Task AddTimeline(UpdateTimelineRequest updateTimelineRequest)
@@ -451,31 +356,7 @@ public class TripService : ITripService
                 timelineId);
         }
 
-        _ = Task.Run(async () =>
-        {
-            using var scope = _scopeFactory.CreateScope();
-            var embeddingService = scope.ServiceProvider.GetRequiredService<IEmbeddingService>();
-            var tripRepository = scope.ServiceProvider.GetRequiredService<ITripRepository>();
-            string timelineString = "";
-            string activitesString = "Activites:";
-            foreach (var timeline in trip.Timelines)
-            {
-                timelineString += $"{timeline.StartDay},{timeline.EndDay}, {timeline.StartingPoint}, {timeline.FromCoords}, {timeline.EndPoint}, {timeline.ToCoords}, {timeline.Note}, ";
-                
-                foreach (var activity in timeline.Activities)
-                {
-                    activitesString += $"{activity.Name}, {activity.Description}, {activity.Link}, {activity.Cost}, {activity.Type}, ";
-                }
-                timelineString += activitesString;
-            }
-
-            var text =
-                $"{trip.Title}. {trip.Description}. {string.Join(",", trip.Tags)}. {trip.Price}. {trip.MaxParticipants}. {timelineString}";
-            var embedding = await embeddingService.GetEmbedding(text);
-            var freshTrip = await tripRepository.GetTripById(trip.Id);
-            freshTrip.UpdateEmbedding(new Vector(embedding));
-            await tripRepository.SaveChanges();
-        });
+        ScheduleTripEmbeddingRefresh(trip.Id);
     }
 
     private static string? ImageContentType(string? fileName)
@@ -490,15 +371,69 @@ public class TripService : ITripService
         };
     }
 
+    /// <summary>
+    /// Recomputes and persists the trip's semantic embedding in the background.
+    /// Best-effort: failures are swallowed so they never surface to the request.
+    /// </summary>
+    private void ScheduleTripEmbeddingRefresh(int tripId)
+    {
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                using var scope = _scopeFactory.CreateScope();
+                var embeddingService = scope.ServiceProvider.GetRequiredService<IEmbeddingService>();
+                var tripRepository = scope.ServiceProvider.GetRequiredService<ITripRepository>();
+
+                var freshTrip = await tripRepository.GetTripById(tripId);
+                if (freshTrip == null) return;
+
+                var embedding = await embeddingService.GetEmbedding(BuildEmbeddingText(freshTrip));
+                freshTrip.UpdateEmbedding(new Vector(embedding));
+                await tripRepository.SaveChanges();
+            }
+            catch
+            {
+                // Background best-effort; embedding will be refreshed on the next edit.
+            }
+        });
+    }
+
+    private static string BuildEmbeddingText(Trip trip)
+    {
+        string timelineString = "";
+        string activitesString = "Activites:";
+        foreach (var timeline in trip.Timelines)
+        {
+            timelineString += $"{timeline.StartDay},{timeline.EndDay}, {timeline.StartingPoint}, {timeline.FromCoords}, {timeline.EndPoint}, {timeline.ToCoords}, {timeline.Note}, ";
+
+            foreach (var activity in timeline.Activities)
+            {
+                activitesString += $"{activity.Name}, {activity.Description}, {activity.Link}, {activity.Cost}, {activity.Type}, ";
+            }
+            timelineString += activitesString;
+        }
+
+        return $"{trip.Title}. {trip.Description}. {string.Join(",", trip.Tags)}. {trip.Price}. {trip.MaxParticipants}. {timelineString}";
+    }
+
     public async Task<List<MessageResponse>> GetMessages(int tripId)
     {
-        return await _messageQueryService.GetMessages(tripId); 
+        int userId = _jwtService.GetUserId();
+        var trip = await _tripRepository.GetTripById(tripId);
+        if (trip == null) throw new KeyNotFoundException("Trip not found");
+        if (!trip.Members.Any(m => m.UserId == userId && m.MemberStatus == MemberStatus.Accepted))
+            throw new UnauthorizedAccessException("You are not a member of this trip");
+        return await _messageQueryService.GetMessages(tripId);
     }
 
     public async Task<byte[]> ExportCosts(int tripId)
     {
+        int userId = _jwtService.GetUserId();
         var trip = await _tripRepository.GetTripById(tripId);
         if (trip == null) throw new KeyNotFoundException("Trip not found");
+        if (!trip.Members.Any(m => m.UserId == userId && m.MemberStatus == MemberStatus.Accepted))
+            throw new UnauthorizedAccessException("You are not a member of this trip");
         return _pdfService.GenerateCostsPdf(trip);
     }
     

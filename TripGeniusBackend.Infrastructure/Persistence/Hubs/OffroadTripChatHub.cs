@@ -1,13 +1,16 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using TripGeniusBackend.Application.DTOs.Trip;
 using TripGeniusBackend.Application.Interfaces.Repositories;
 using TripGeniusBackend.Application.Interfaces;
 using TripGeniusBackend.Domain.Entities;
+using TripGeniusBackend.Domain.Enums;
 
 namespace TripGeniusBackend.Infrastructure.Persistence.Hubs;
 
+[Authorize]
 public class OffroadTripChatHub : Hub
 {
     private readonly IServiceScopeFactory _scopeFactory;
@@ -19,8 +22,30 @@ public class OffroadTripChatHub : Hub
         _hubContext = hubContext;
     }
 
-    public async Task JoinOffroadTrip(int tripId) =>
+    private int GetUserId()
+    {
+        var value = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!int.TryParse(value, out var userId))
+            throw new HubException("Unauthorized");
+        return userId;
+    }
+
+    private static async Task EnsureMemberAsync(IOffroadTripRepository tripRepository, int tripId, int userId)
+    {
+        var trip = await tripRepository.GetTripById(tripId);
+        if (trip == null)
+            throw new HubException("Trip not found");
+        if (!trip.Members.Any(m => m.UserId == userId && m.MemberStatus == MemberStatus.Accepted))
+            throw new HubException("You are not a member of this trip");
+    }
+
+    public async Task JoinOffroadTrip(int tripId)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var tripRepository = scope.ServiceProvider.GetRequiredService<IOffroadTripRepository>();
+        await EnsureMemberAsync(tripRepository, tripId, GetUserId());
         await Groups.AddToGroupAsync(Context.ConnectionId, $"offroad-{tripId}");
+    }
 
     public async Task LeaveOffroadTrip(int tripId) =>
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"offroad-{tripId}");
@@ -30,8 +55,10 @@ public class OffroadTripChatHub : Hub
         using var scope = _scopeFactory.CreateScope();
         var userRepository = scope.ServiceProvider.GetRequiredService<IUserRepository>();
         var messageRepository = scope.ServiceProvider.GetRequiredService<IOffroadMessageRepository>();
+        var tripRepository = scope.ServiceProvider.GetRequiredService<IOffroadTripRepository>();
 
-        var userId = int.Parse(Context.User!.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var userId = GetUserId();
+        await EnsureMemberAsync(tripRepository, tripId, userId);
         var user = await userRepository.GetUserById(userId);
         if (user == null)
             throw new KeyNotFoundException("User not found");

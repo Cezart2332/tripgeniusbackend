@@ -57,17 +57,9 @@ public class AuthService : IAuthService
         if (user.IsVerified == false)
         {
             user.RegenerateVerifyToken();
-            try
-            {
-               await _emailService.SendEmailAsync(user.Email, "Account Verification",
-                    $"We are happy to welcome you to TripGenius! Please click the link below to verify your account",
-                    $"tripgenius.online/verify-email?token={user.VerifyToken}", "Verify Email");
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e.Message);
-                throw;
-            }
+            await _emailService.SendEmailAsync(user.Email, "Account Verification",
+                $"We are happy to welcome you to TripGenius! Please click the link below to verify your account",
+                $"tripgenius.online/verify-email?token={user.VerifyToken}", "Verify Email");
             await _userRepository.SaveChanges();
             throw new AppException(402,"Email not verified,we send you another link on email!");
         }
@@ -89,14 +81,18 @@ public class AuthService : IAuthService
         {
             payload = await GoogleJsonWebSignature.ValidateAsync(token, settings);
         }
-        catch(Exception ex)
+        catch(Exception)
         {
-            Console.WriteLine(ex.Message);
             throw new AppException(402, "Token Google invalid");
         }
-        
+
+        // Google must have verified ownership of the email before we trust it for
+        // login or for linking to an existing local account (prevents account takeover).
+        if (!payload.EmailVerified)
+            throw new AppException(402, "Google email not verified");
+
         string email = payload.Email;
-        
+
         string googleId = payload.Subject;
         string name = payload.Name;
         var user = await _userRepository.GetUserByEmail(email);
@@ -128,8 +124,11 @@ public class AuthService : IAuthService
         var refreshTokenEntity =  await _refreshTokenQueryService.GetRefreshToken(hashedRefreshToken);
         if (refreshTokenEntity == null) throw new AppException(401, "Refresh token not found");
         if (refreshTokenEntity.Expires < DateTime.UtcNow)  throw new AppException(401, "Refresh token expired");
-        
-        AuthResponse authResponse = await _jwtService.GenerateTokens(refreshTokenEntity.User);
+
+        var user = refreshTokenEntity.User;
+        // Rotate: invalidate the used token so it cannot be replayed, then issue a fresh pair.
+        await _jwtService.RevokeRefreshToken(refreshTokenEntity);
+        AuthResponse authResponse = await _jwtService.GenerateTokens(user);
 
         return authResponse;
     }
@@ -170,7 +169,8 @@ public class AuthService : IAuthService
     public async Task SendResetPassword(string email)
     {
         var user = await _userRepository.GetUserByEmail(email);
-        if(user == null) throw new ArgumentException("Invalid email");
+        // Do not reveal whether the email exists (avoids account enumeration).
+        if(user == null) return;
         user.RegenerateResetToken();
         await _emailService.SendEmailAsync(user.Email, "Reset Password",
             $"We received a request to reset your password. Please click the link below to reset your password",

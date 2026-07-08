@@ -71,7 +71,8 @@ public class JwtService : IJwtService
     
     public async Task<AuthResponse> GenerateTokens(User user)
     {
-        await _refreshTokenRepository.DeleteAllRefreshTokens(user.Id);
+        // Keep other active sessions (multi-device); only prune this user's expired tokens.
+        await _refreshTokenRepository.DeleteExpiredRefreshTokens(user.Id);
         var accessToken = GenerateAccessToken(user);
         string token = GenerateRefreshToken();
         RefreshToken refreshToken = new RefreshToken

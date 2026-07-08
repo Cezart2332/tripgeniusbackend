@@ -30,14 +30,26 @@ public class GeocodingService
 
         var response = await _httpClient.GetFromJsonAsync<List<NominatimResult>>(url);
 
-        var results = response?.Select(f => new LocationSuggestion
-        {
-            Id       = f.PlaceId.ToString(),
-            Name     = f.DisplayName.Split(',')[0],
-            PlaceName = f.DisplayName,
-            Lat      = double.Parse(f.Lat, CultureInfo.InvariantCulture),
-            Lng      = double.Parse(f.Lon, CultureInfo.InvariantCulture)
-        }).ToList() ?? new();
+        var results = (response ?? new())
+            .Select(f =>
+            {
+                if (!double.TryParse(f.Lat, NumberStyles.Float, CultureInfo.InvariantCulture, out var lat) ||
+                    !double.TryParse(f.Lon, NumberStyles.Float, CultureInfo.InvariantCulture, out var lng))
+                    return null;
+
+                var displayName = f.DisplayName ?? "";
+                return new LocationSuggestion
+                {
+                    Id        = f.PlaceId.ToString(),
+                    Name      = displayName.Split(',')[0],
+                    PlaceName = displayName,
+                    Lat       = lat,
+                    Lng       = lng
+                };
+            })
+            .Where(x => x != null)
+            .Select(x => x!)
+            .ToList();
 
         _cache.Set(cacheKey, results, TimeSpan.FromHours(24));
 
