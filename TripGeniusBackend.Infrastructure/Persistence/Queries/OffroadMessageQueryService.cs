@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using TripGeniusBackend.Application.DTOs.Trip;
 using TripGeniusBackend.Application.Interfaces.Queries;
 using TripGeniusBackend.Domain.Entities;
+using TripGeniusBackend.Domain.Enums;
 
 namespace TripGeniusBackend.Infrastructure.Persistence.Queries;
 
@@ -26,7 +27,8 @@ public class OffroadMessageQueryService : IOffroadMessageQueryService
             Content = m.Content,
             SentAt = m.Date,
             ImageUrl = m.ImageURL,
-            Username = m.User.Profile.Username,
-            ProfileUrl = m.User.Profile.ProfileURL
+            Username = m.SenderType == SenderType.Ai ? "TripGenius AI" : m.User!.Profile.Username,
+            ProfileUrl = m.SenderType == SenderType.Ai ? "" : m.User!.Profile.ProfileURL,
+            IsAi = m.SenderType == SenderType.Ai
         };
 }

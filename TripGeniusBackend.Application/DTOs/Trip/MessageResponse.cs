@@ -1,4 +1,4 @@
-﻿namespace TripGeniusBackend.Application.DTOs.Trip;
+namespace TripGeniusBackend.Application.DTOs.Trip;
 
 public class MessageResponse
 {
@@ -8,4 +8,6 @@ public class MessageResponse
     public string ImageUrl { get; set; } = string.Empty;
     public string Username { get; set; } = string.Empty;
     public string ProfileUrl { get; set; } = string.Empty;
+    /// <summary>True when the message was authored by the TripGenius AI agent.</summary>
+    public bool IsAi { get; set; }
 }

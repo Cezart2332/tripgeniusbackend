@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using TripGeniusBackend.Application.DTOs.Trip;
 using TripGeniusBackend.Application.Interfaces.Queries;
 using TripGeniusBackend.Domain.Entities;
+using TripGeniusBackend.Domain.Enums;
 
 namespace TripGeniusBackend.Infrastructure.Persistence.Queries;
 
@@ -25,11 +26,13 @@ public class MessageQueryService : IMessageQueryService
     {
         return message => new MessageResponse
         {
+            Id = message.Id,
             Content = message.Content,
             SentAt = message.Date,
             ImageUrl = message.ImageURL,
-            Username = message.User.Profile.Username,
-            ProfileUrl = message.User.Profile.ProfileURL
+            Username = message.SenderType == SenderType.Ai ? "TripGenius AI" : message.User!.Profile.Username,
+            ProfileUrl = message.SenderType == SenderType.Ai ? "" : message.User!.Profile.ProfileURL,
+            IsAi = message.SenderType == SenderType.Ai
         };
     }
 }
