@@ -82,6 +82,8 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<OffroadTrip>().HasMany(t => t.Members).WithOne(m => m.OffroadTrip).HasForeignKey(m => m.OffroadTripId);
         modelBuilder.Entity<OffroadTrip>().HasMany(t => t.History).WithOne(h => h.OffroadTrip).HasForeignKey(h => h.OffroadTripId);
 
+        modelBuilder.Entity<Message>().Property(m => m.SenderType).HasConversion<string>();
+        modelBuilder.Entity<OffroadMessage>().Property(m => m.SenderType).HasConversion<string>();
     }
 
 }

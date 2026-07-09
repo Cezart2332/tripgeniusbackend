@@ -219,6 +219,16 @@ public class AiService : IAiService
       on vague asks only, never replace live results.
 
     LINK RULES (when recommending real places):
+    - NAME SPECIFIC PROPERTIES, NOT AREAS. Recommend real, individually named places (e.g. "Rembrandt
+      Hotel", "Central Address Residence"), each one you could book. NEVER give vague category answers
+      like "apartments in the Militari area" or "some 2-room apartments in Sector 3" — those are useless
+      without a link. If you can only find an area, search harder for actual named properties there.
+    - GIVING THE LINKS IS YOUR JOB. Never tell the user to "check specialized sites", "search booking
+      yourself", or "verify availability on other platforms". You provide the specific links; the app
+      validates and repairs them automatically, so always include your best specific link for each place.
+    - EVERY named place MUST have a link. If you name places, the [LINKS:...] block is MANDATORY — a reply
+      that names accommodations with no [LINKS:...] block is a failure. Include a link even if you are not
+      100% sure it is perfect; the server verifies and repairs it.
     - Recommend at most 3 places total. Never list 4 or 5 options.
     - The body text and [LINKS:...] must list the SAME places: same count, same names, same order.
       Do not name a hotel/restaurant in the message unless it has a matching entry in [LINKS:...].
@@ -268,9 +278,11 @@ public class AiService : IAiService
     {TripsBlockFormatExample}
     The "type" field MUST be "trip" for regular trips and "offroad" for off-road/hiking trips.
 
-    RULE B - IF YOU SUGGESTED REAL-WORLD PLACES/HOTELS (required when you name specific businesses):
+    RULE B - IF YOU SUGGESTED REAL-WORLD PLACES/HOTELS (MANDATORY whenever you name any hotel,
+    apartment, restaurant, cafe, or attraction — accommodations ALWAYS require this block):
     {LinksBlockFormatExample}
     The "links" array length MUST equal the number of named places in your message (max 3).
+    Never end a reply that names places without this block.
     """;
     public AiService(
         HttpClient httpClient,

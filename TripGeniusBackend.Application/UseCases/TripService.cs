@@ -359,6 +359,75 @@ public class TripService : ITripService
         ScheduleTripEmbeddingRefresh(trip.Id);
     }
 
+    // ─────────────────────────────────────────────────────────────────────
+    //  Agent actions — called by the AI trip agent from a detached hub task.
+    //  userId is passed explicitly (no HttpContext); Owner/Admin gated here as
+    //  a server-side safety net independent of what the model was asked to do.
+    // ─────────────────────────────────────────────────────────────────────
+
+    private static Trip EnsureCanEdit(Trip? trip, int userId)
+    {
+        if (trip == null) throw new KeyNotFoundException("Trip not found");
+        bool canEdit = trip.Members.Any(m => m.UserId == userId && (m.Role == Roles.Owner || m.Role == Roles.Admin));
+        if (!canEdit) throw new UnauthorizedAccessException("You are not authorized to edit this trip");
+        return trip;
+    }
+
+    public async Task<string> AgentAddActivity(int userId, int tripId, int day, TripActivityRequest activity)
+    {
+        var trip = EnsureCanEdit(await _tripRepository.GetTripById(tripId), userId);
+
+        var timeline = trip.Timelines.FirstOrDefault(t => day >= t.StartDay && day <= t.EndDay);
+        if (timeline == null)
+        {
+            var days = string.Join(", ", trip.Timelines.Select(t => t.StartDay == t.EndDay ? $"{t.StartDay}" : $"{t.StartDay}-{t.EndDay}"));
+            throw new KeyNotFoundException($"No day {day} in this trip. Existing days: {days}.");
+        }
+
+        timeline.AddActivity(new TripActivity(activity.Name, activity.Description, activity.Link, activity.Cost, activity.Type));
+        await _tripRepository.SaveChanges();
+        ScheduleTripEmbeddingRefresh(trip.Id);
+        return $"Added \"{activity.Name}\" ({activity.Type}) to day {day}.";
+    }
+
+    public async Task<string> AgentAddDay(int userId, int tripId, int startDay, int endDay, string startingPoint, string endPoint, string note)
+    {
+        var trip = EnsureCanEdit(await _tripRepository.GetTripById(tripId), userId);
+
+        trip.AddTimeline(startDay, endDay, startingPoint, new double[2], endPoint, new double[2], note ?? "");
+        await _tripRepository.SaveChanges();
+        ScheduleTripEmbeddingRefresh(trip.Id);
+        return $"Added day {startDay}{(endDay != startDay ? $"-{endDay}" : "")}: {startingPoint} → {endPoint}.";
+    }
+
+    public async Task<string> AgentUpdateActivity(int userId, int tripId, int activityId, TripActivityRequest activity)
+    {
+        var trip = EnsureCanEdit(await _tripRepository.GetTripById(tripId), userId);
+
+        var timeline = trip.Timelines.FirstOrDefault(t => t.Activities.Any(a => a.Id == activityId));
+        if (timeline == null) throw new KeyNotFoundException($"Activity {activityId} not found in this trip.");
+
+        timeline.UpdateActivity(activityId, activity.Name, activity.Description, activity.Link ?? "", activity.Cost ?? 0, activity.Type);
+        await _tripRepository.SaveChanges();
+        ScheduleTripEmbeddingRefresh(trip.Id);
+        return $"Updated activity \"{activity.Name}\".";
+    }
+
+    public async Task<string> AgentRemoveActivity(int userId, int tripId, int activityId)
+    {
+        var trip = EnsureCanEdit(await _tripRepository.GetTripById(tripId), userId);
+
+        var timeline = trip.Timelines.FirstOrDefault(t => t.Activities.Any(a => a.Id == activityId));
+        if (timeline == null) throw new KeyNotFoundException($"Activity {activityId} not found in this trip.");
+
+        var target = timeline.Activities.First(a => a.Id == activityId);
+        var name = target.Name;
+        timeline.RemoveActivity(target);
+        await _tripRepository.SaveChanges();
+        ScheduleTripEmbeddingRefresh(trip.Id);
+        return $"Removed activity \"{name}\".";
+    }
+
     private static string? ImageContentType(string? fileName)
     {
         if (string.IsNullOrEmpty(fileName)) return null;

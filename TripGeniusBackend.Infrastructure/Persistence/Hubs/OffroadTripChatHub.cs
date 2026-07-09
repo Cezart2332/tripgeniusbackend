@@ -1,10 +1,13 @@
 using System.Security.Claims;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using TripGeniusBackend.Application.DTOs.Trip;
 using TripGeniusBackend.Application.Interfaces.Repositories;
 using TripGeniusBackend.Application.Interfaces;
+using TripGeniusBackend.Application.Interfaces.Services;
 using TripGeniusBackend.Domain.Entities;
 using TripGeniusBackend.Domain.Enums;
 
@@ -50,7 +53,7 @@ public class OffroadTripChatHub : Hub
     public async Task LeaveOffroadTrip(int tripId) =>
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"offroad-{tripId}");
 
-    public async Task SendMessage(int tripId, string content)
+    public async Task SendMessage(int tripId, string content, int[]? mentionedUserIds = null)
     {
         using var scope = _scopeFactory.CreateScope();
         var userRepository = scope.ServiceProvider.GetRequiredService<IUserRepository>();
@@ -58,7 +61,12 @@ public class OffroadTripChatHub : Hub
         var tripRepository = scope.ServiceProvider.GetRequiredService<IOffroadTripRepository>();
 
         var userId = GetUserId();
-        await EnsureMemberAsync(tripRepository, tripId, userId);
+        var trip = await tripRepository.GetTripById(tripId);
+        if (trip == null)
+            throw new HubException("Trip not found");
+        if (!trip.Members.Any(m => m.UserId == userId && m.MemberStatus == MemberStatus.Accepted))
+            throw new HubException("You are not a member of this trip");
+
         var user = await userRepository.GetUserById(userId);
         if (user == null)
             throw new KeyNotFoundException("User not found");
@@ -74,11 +82,18 @@ public class OffroadTripChatHub : Hub
             SentAt = message.Date,
             ImageUrl = message.ImageURL,
             Username = user.Profile.Username,
-            ProfileUrl = user.Profile.ProfileURL
+            ProfileUrl = user.Profile.ProfileURL,
+            IsAi = false
         };
 
         var groupName = $"offroad-{tripId}";
         await Clients.Group(groupName).SendAsync("ReceiveMessage", messageResponse);
+
+        NotifyMentionedMembers(trip, userId, user.Profile.Username, content, mentionedUserIds,
+            $"/app/offroad/{tripId}");
+
+        if (TripChatHub.MentionsAi(content))
+            TriggerOffroadAgent(tripId, userId, TripChatHub.StripAiMention(content));
 
         ChatModerationRunner.Schedule(
             _scopeFactory,
@@ -95,5 +110,60 @@ public class OffroadTripChatHub : Hub
                     await repo.SaveChanges();
                 return deleted;
             });
+    }
+
+    private void TriggerOffroadAgent(int tripId, int userId, string prompt)
+    {
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                using var scope = _scopeFactory.CreateScope();
+                var ai = scope.ServiceProvider.GetRequiredService<ITripChatAiService>();
+                await ai.RespondInOffroadAsync(tripId, userId, prompt, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                var logger = _scopeFactory.CreateScope().ServiceProvider.GetService<ILogger<OffroadTripChatHub>>();
+                logger?.LogWarning(ex, "Offroad agent trigger failed for trip {TripId}", tripId);
+            }
+        });
+    }
+
+    private void NotifyMentionedMembers(OffroadTrip trip, int senderId, string senderName, string content,
+        int[]? mentionedUserIds, string url)
+    {
+        if (mentionedUserIds == null || mentionedUserIds.Length == 0) return;
+
+        var targets = mentionedUserIds
+            .Distinct()
+            .Where(id => id != senderId && trip.Members.Any(m => m.UserId == id && m.MemberStatus == MemberStatus.Accepted))
+            .ToList();
+        if (targets.Count == 0) return;
+
+        var preview = content.Length > 120 ? content[..120] + "…" : content;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                using var scope = _scopeFactory.CreateScope();
+                var userRepo = scope.ServiceProvider.GetRequiredService<IUserRepository>();
+                var notifications = scope.ServiceProvider.GetRequiredService<INotificationService>();
+
+                foreach (var targetId in targets)
+                {
+                    var target = await userRepo.GetUserById(targetId);
+                    if (target == null) continue;
+                    target.AddNotification($"{senderName} mentioned you in \"{trip.Title}\".");
+                    await userRepo.SaveChanges();
+                    await notifications.SendNotificationAsync(targetId, $"{senderName} mentioned you", preview, url);
+                }
+            }
+            catch
+            {
+                // Best-effort.
+            }
+        });
     }
 }

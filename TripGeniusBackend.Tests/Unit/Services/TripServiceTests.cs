@@ -169,4 +169,65 @@ public class TripServiceTests
         // Assert
         _mockTripRepository.Verify(x => x.SaveChanges(), Times.Once);
     }
+
+    // ── Agent actions ──
+
+    [Fact]
+    public async Task AgentAddActivity_AsOwner_AddsActivityAndSaves()
+    {
+        const int userId = 1, tripId = 5;
+        var trip = new TripBuilder().WithId(tripId).WithUserId(userId).Build();
+        trip.AddTimeline(1, 2, "Cluj", new double[2], "Sibiu", new double[2], "Day one");
+        _mockTripRepository.Setup(x => x.GetTripById(tripId)).ReturnsAsync(trip);
+
+        var req = new TripActivityRequest { Name = "Dinner", Description = "", Type = Domain.Enums.ActivityType.Food, Cost = 40 };
+        var result = await _tripService.AgentAddActivity(userId, tripId, 1, req);
+
+        result.Should().Contain("Dinner");
+        trip.Timelines.First().Activities.Should().ContainSingle(a => a.Name == "Dinner");
+        _mockTripRepository.Verify(x => x.SaveChanges(), Times.Once);
+    }
+
+    [Fact]
+    public async Task AgentAddActivity_AsPlainMember_ThrowsUnauthorized()
+    {
+        const int ownerId = 1, memberId = 2, tripId = 5;
+        var trip = new TripBuilder().WithId(tripId).WithUserId(ownerId).Build();
+        trip.AddTimeline(1, 1, "Cluj", new double[2], "Sibiu", new double[2], "Day one");
+        trip.RequestMember(memberId);
+        trip.AcceptMember(memberId); // role becomes Member
+        _mockTripRepository.Setup(x => x.GetTripById(tripId)).ReturnsAsync(trip);
+
+        var req = new TripActivityRequest { Name = "Dinner", Type = Domain.Enums.ActivityType.Food };
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(
+            () => _tripService.AgentAddActivity(memberId, tripId, 1, req));
+        _mockTripRepository.Verify(x => x.SaveChanges(), Times.Never);
+    }
+
+    [Fact]
+    public async Task AgentAddActivity_ForNonexistentDay_ThrowsNotFound()
+    {
+        const int userId = 1, tripId = 5;
+        var trip = new TripBuilder().WithId(tripId).WithUserId(userId).Build();
+        trip.AddTimeline(1, 1, "Cluj", new double[2], "Sibiu", new double[2], "Day one");
+        _mockTripRepository.Setup(x => x.GetTripById(tripId)).ReturnsAsync(trip);
+
+        var req = new TripActivityRequest { Name = "Dinner", Type = Domain.Enums.ActivityType.Food };
+        await Assert.ThrowsAsync<KeyNotFoundException>(
+            () => _tripService.AgentAddActivity(userId, tripId, 9, req));
+    }
+
+    [Fact]
+    public async Task AgentAddDay_AsOwner_AddsTimeline()
+    {
+        const int userId = 1, tripId = 5;
+        var trip = new TripBuilder().WithId(tripId).WithUserId(userId).Build();
+        _mockTripRepository.Setup(x => x.GetTripById(tripId)).ReturnsAsync(trip);
+
+        var result = await _tripService.AgentAddDay(userId, tripId, 1, 1, "Cluj", "Sibiu", "Scenic");
+
+        result.Should().Contain("Cluj");
+        trip.Timelines.Should().ContainSingle();
+        _mockTripRepository.Verify(x => x.SaveChanges(), Times.Once);
+    }
 }

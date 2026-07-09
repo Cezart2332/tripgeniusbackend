@@ -143,7 +143,11 @@ builder.Services.AddScoped<IAiChatService, AiChatService>();
 builder.Services.AddHttpClient<ResendClient>();
 builder.Services.AddHttpClient<IAiService,AiService>(client =>
 {
-    client.Timeout = TimeSpan.FromMinutes(15); 
+    client.Timeout = TimeSpan.FromMinutes(15);
+});
+builder.Services.AddHttpClient<IAgentRunner, AgentRunner>(client =>
+{
+    client.Timeout = TimeSpan.FromMinutes(5);
 });
 builder.Services.AddHttpClient<IEmbeddingService, EmbeddingService>();
 builder.Services.AddHttpClient<GeocodingService>(client =>
@@ -165,6 +169,7 @@ builder.Services.AddHttpClient<ILinkValidationService, LinkValidationService>(cl
 {
     client.Timeout = TimeSpan.FromSeconds(10);
 });
+builder.Services.AddScoped<ITripChatAiService, TripChatAiService>();
 builder.Services.Configure<ResendClientOptions>( o =>
 {
     o.ApiToken = builder.Configuration["Email:ResendApiKey"]!;
