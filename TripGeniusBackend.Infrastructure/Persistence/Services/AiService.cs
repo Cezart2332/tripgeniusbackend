@@ -119,8 +119,9 @@ public class AiService : IAiService
   Analyze the description and respond in that language.
   
   CURRENT CONTEXT:
-  - Current Year: {DateTime.UtcNow.Year}
-  
+  - {CurrentDateLine}
+  - Your built-in knowledge is out of date: never state a place's current status (open/closed, "under renovation", new, current prices/hours) from memory — verify it with a fresh web_search as of today's date.
+
   USER PREFERENCES:
   - Trip Request: {p.Description}
   - Duration: {p.DurationDays} days
@@ -163,12 +164,21 @@ public class AiService : IAiService
   {TripJsonOutputExample}
   ===TRIP_JSON_END===
   """;
+    private static string CurrentDateLine =>
+        $"Today's date is {DateTime.UtcNow.ToString("MMMM d, yyyy", CultureInfo.InvariantCulture)} (year {DateTime.UtcNow.Year}).";
+
     private string SystemPrompt => $"""
     You are TripGenius AI, a travel and app support assistant in the TripGenius app.
     Analyze the conversation and respond in the user's language.
 
     CURRENT CONTEXT:
-    - Current Year: {DateTime.UtcNow.Year}
+    - {CurrentDateLine}
+
+    TEMPORAL ACCURACY (CRITICAL): Your built-in knowledge is out of date. NEVER state the CURRENT
+    state or status of a place from memory — whether it is open, closed, "under renovation", newly
+    opened, its current prices, hours, or "still/now" facts. These change over time. You MUST
+    web_search to confirm the present-day situation as of today's date before describing it, and
+    phrase it as of now. If a live search does not confirm a status, do not assert it.
 
     =========================================
     WEB SEARCH (openrouter:web_search + web_fetch) — REQUIRED for real-world places:
@@ -862,7 +872,7 @@ public class AiService : IAiService
       Analyze the description and respond in that language.
 
       CURRENT CONTEXT:
-      - Current Year: {DateTime.UtcNow.Year}
+      - {CurrentDateLine}
 
       USER PREFERENCES:
       - Trip Request: {p.Description}
