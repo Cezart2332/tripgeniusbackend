@@ -8,6 +8,8 @@
   <ItemGroup>
     <PackageReference Include="DotNetEnv" Version="3.2.0" />
     <PackageReference Include="Google.Apis.Auth" Version="1.73.0" />
+    <!-- Pinned to clear GHSA-v5pm-xwqc-g5wc (transitive via Scalar/AspNetCore.OpenApi); first patched 2.7.5 -->
+    <PackageReference Include="Microsoft.OpenApi" Version="2.7.5" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.6" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.6" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.6">
