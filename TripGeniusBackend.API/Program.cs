@@ -161,7 +161,10 @@ builder.Services.AddHttpClient<IContentModerationService, ContentModerationServi
 builder.Services.AddSingleton<IBackgroundModerationService, BackgroundModerationService>();
 builder.Services.AddHttpClient(nameof(ModerationStartupLogger));
 builder.Services.AddHostedService<ModerationStartupLogger>();
-builder.Services.AddSingleton<ILinkValidationService, LinkValidationService>();
+builder.Services.AddHttpClient<ILinkValidationService, LinkValidationService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
 builder.Services.Configure<ResendClientOptions>( o =>
 {
     o.ApiToken = builder.Configuration["Email:ResendApiKey"]!;

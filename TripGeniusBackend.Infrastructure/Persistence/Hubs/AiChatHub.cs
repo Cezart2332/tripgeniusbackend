@@ -135,7 +135,9 @@ public class AiChatHub : Hub
                 }
             }
 
-            var validatedLinks = await _linkValidationService.ValidateAndRepairLinksAsync(rawLinks);
+            var validatedLinks = await _linkValidationService.ValidateAndRepairLinksAsync(
+                rawLinks,
+                reSearch: link => _aiService.FindDirectLinkAsync(link.Title));
             var sanitizedText = Regex.Replace(rawResponse, @"\[LINKS:.*$", "", RegexOptions.Singleline).Trim();
             var numberedInText = CountNumberedRecommendations(sanitizedText);
 
@@ -252,6 +254,8 @@ public class AiChatHub : Hub
         });
 
         fullResponse = AiResponseSanitizer.StripInternalPrompts(fullResponse);
+        if (fullResponse.Contains("[LINKS:", StringComparison.Ordinal))
+            await Clients.Group(userId.ToString()).SendAsync("StatusUpdate", AiActivityStatus.ValidatingLinks);
         var (sanitizedText, validatedLinks) = await PostProcessLinksAsync(fullResponse);
         var sanitizedResponse = sanitizedText;
         if (validatedLinks.Count > 0)

@@ -19,4 +19,9 @@ public interface IAiService
     public Task<int> GenerateOffroadTripAsync(AiOffroadTripPlanner planner);
     public Task<string> ExtractAsync(string prompt);
 
+    /// <summary>
+    /// Focused web_search that returns the single most specific, real URL for a named place
+    /// (e.g. "Hotel Ambient, Brașov"), or null if none is found. Used to repair dead links.
+    /// </summary>
+    public Task<string?> FindDirectLinkAsync(string placeQuery, CancellationToken ct = default);
 }

@@ -32,6 +32,7 @@ public class AiService : IAiService
     private readonly IJwtService _jwtService;
     private readonly IUserRepository _userRepository;
     private readonly INotificationService _notificationService;
+    private readonly ILinkValidationService _linkValidationService;
 
     private const string TripJsonOutputExample = """
     {
@@ -142,9 +143,8 @@ public class AiService : IAiService
      - Priority 3: Direct reservation/info page on a reputable travel site (TripAdvisor, Yelp, etc.).
      - LAST RESORT ONLY: Google Maps search link. Use this ONLY if after multiple deep searches you cannot find a direct functional URL.
   3. AVOID GOOGLE MAPS: Do not settle for a Google Maps link if an official site exists. If your search returns a Maps link, perform a NEW search specifically for "[Place Name] official website".
-  4. NO HALLUCINATIONS: Do not invent URLs or place facts. Every link must come from web_search and pass web_fetch. If tools return no data, omit the link and say verification failed — do not guess from memory.
-  5. URL VALIDATION VIA FETCH (MANDATORY): You MUST call web_fetch on EVERY link before including it. Check the page content — if it's a 404, a search-results/listing page, or broken, search again for a better URL.
-     Prefer direct property pages (e.g. booking.com/hotel/..., airbnb.com/rooms/...) over search-results pages.
+  4. NO HALLUCINATIONS: Do not invent URLs or place facts. Every link must come from web_search. If a search returns no usable page, omit the link rather than guessing one from memory.
+  5. SEARCH DEEP FOR SPECIFIC PAGES: Search thoroughly and pick the most specific real page returned by web_search (e.g. booking.com/hotel/..., airbnb.com/rooms/..., or the official site) over a city or search-results page — refine the search until you find that place's own page. The app validates every link's liveness server-side and, if one is dead or a search page, auto-replaces it with a precise map link, so focus your effort on finding the CORRECT page rather than re-confirming it with web_fetch.
   6. GOOGLE MAPS FORMAT: If (and only if) you must use a fallback, the format is: https://www.google.com/maps/search/?api=1&query=... (where Query is 'Name+City'). Do not append random numbers at the end.
 
   OTHER RULES:
@@ -181,7 +181,13 @@ public class AiService : IAiService
     weather, events, "where can I", "recommend", "best place", or naming specific businesses — even as
     a follow-up ("what if I want a specialty coffee?"). Never answer those from memory alone.
 
-    WORKFLOW: web_search → pick URLs → web_fetch EACH URL → then write. If fetch fails, search again.
+    WORKFLOW: search DEEPLY for each place — if the first results are only aggregators or city pages,
+    search again with refined terms ("[Exact Name] [City] official site", "[Exact Name] booking hotel")
+    until you find that place's OWN specific page. Getting the correct, specific page is the priority.
+    You do NOT need to web_fetch a link merely to confirm it is alive — the app checks liveness
+    server-side and, if a link is dead or a search page, auto-replaces it with a precise map link to the
+    same place. So spend your tool budget on finding the RIGHT page, not on re-confirming liveness.
+    (web_fetch is still useful when you must decide which of two candidate pages is the real property.)
     Open with ONE short friendly sentence (max 12 words).
 
     APP CONTEXT & SUPPORT GUIDANCE:
@@ -219,11 +225,12 @@ public class AiService : IAiService
       3. Prefer booking.com/hotel/..., airbnb.com/rooms/..., or official site. If none found, use
          Google Maps with the FULL property name and address in query (not a city-only search).
     - FORBIDDEN: city listing pages (momondo *-vacation-rentals*, booking.com/city/*, tripadvisor Hotels-g*).
-    - Do NOT construct or guess URLs — only URLs from web_search or confirmed via web_fetch.
-    - web_fetch EVERY URL before including it. Check the page content:
-        * "Page Not Found", "404", or error → DISCARD and search for another URL.
-        * City/search/listing page → DISCARD and search for the specific property page.
-        * Actual hotel or apartment page → KEEP.
+    - Do NOT construct or guess URLs — use only URLs returned by web_search.
+    - Search deeply and pick the MOST SPECIFIC real page (booking.com/hotel/..., airbnb.com/rooms/...,
+      or the official site), never a city or search page. Refine your search until you find it.
+    - Also put the city in each link title (e.g. "Hotel Ambient, Brașov") — if a link ever turns out
+      dead, the app repairs it with a precise map link built from that title, so the city makes it exact.
+    - The server verifies every link's liveness for you, so focus on correctness, not on re-checking it.
     - Google Maps fallback format: https://www.google.com/maps/search/?api=1&query=Name+City
 
     TONE: Warm, conversational, and direct. Use the user's name occasionally.
@@ -265,6 +272,7 @@ public class AiService : IAiService
         IJwtService jwtService,
         IUserRepository userRepository,
         INotificationService notificationService,
+        ILinkValidationService linkValidationService,
         ILogger<AiService> logger)
     {
         _httpClient = httpClient;
@@ -279,6 +287,7 @@ public class AiService : IAiService
         _jwtService = jwtService;
         _userRepository = userRepository;
         _notificationService = notificationService;
+        _linkValidationService = linkValidationService;
     }
 
     public async Task AskAsync(
@@ -682,6 +691,7 @@ public class AiService : IAiService
         var tripRequest = JsonSerializer.Deserialize<TripRequest>(jsonContent, options)
             ?? throw new Exception("Deserializare eșuată.");
 
+        await ValidateActivityLinksAsync(tripRequest);
         await FillCoordsAsync(tripRequest);
         var tripId = await _tripService.CreateTrip(tripRequest, skipContentModeration: true);
         Console.WriteLine($"[DEBUG] Trip '{tripRequest.Title}' creat cu succes! (id={tripId})");
@@ -689,6 +699,46 @@ public class AiService : IAiService
         return tripId;
     }
 
+
+    public async Task<string?> FindDirectLinkAsync(string placeQuery, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(placeQuery))
+            return null;
+
+        var messages = new List<object>
+        {
+            new
+            {
+                role = "system",
+                content =
+                    "You are a link finder. Use web_search to find the single most specific, real, "
+                    + "currently-live URL for the EXACT place the user names. Prefer the property's own "
+                    + "page (booking.com/hotel/..., airbnb.com/rooms/...) or its official website. NEVER "
+                    + "return a city page, a search-results page, or a listing/aggregator page. "
+                    + "Reply with ONLY the raw URL and nothing else. If you cannot find a specific page, "
+                    + "reply with exactly NONE."
+            },
+            new { role = "user", content = $"Find the direct page for: {placeQuery}" }
+        };
+
+        string text;
+        try
+        {
+            text = await AccumulateGenerationStreamAsync(messages);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Link re-search failed for '{Place}'", placeQuery);
+            return null;
+        }
+
+        text = StripModelArtifacts(text);
+        var match = Regex.Match(text, @"https?://[^\s""'<>\])}]+");
+        if (!match.Success)
+            return null;
+
+        return match.Value.TrimEnd('.', ',', ';', ')', ']');
+    }
 
     public async Task<string> ExtractAsync(string prompt)
     {
@@ -731,6 +781,59 @@ public class AiService : IAiService
             .GetProperty("message")
             .GetProperty("content")
             .GetString();
+    }
+
+    /// <summary>
+    /// Verifies every activity link with a real HTTP request. Dead or search-page links are not shown
+    /// broken and not dropped either — they are repaired with a precise Google Maps link to the named
+    /// place (plus its city), so the itinerary always points somewhere real.
+    /// </summary>
+    private async Task ValidateActivityLinksAsync(TripRequest trip)
+    {
+        var jobs = new List<Task>();
+
+        foreach (var tl in trip.Timelines)
+        {
+            var city = !string.IsNullOrWhiteSpace(tl.EndPoint) ? tl.EndPoint : tl.StartingPoint;
+            foreach (var activity in tl.Activities)
+            {
+                if (string.IsNullOrWhiteSpace(activity.Link))
+                    continue;
+                jobs.Add(RepairActivityLinkAsync(activity, city));
+            }
+        }
+
+        if (jobs.Count > 0)
+            await Task.WhenAll(jobs);
+    }
+
+    private async Task RepairActivityLinkAsync(TripActivityRequest activity, string city)
+    {
+        var (isValid, finalUrl) = await _linkValidationService.ValidateAsync(activity.Link!);
+        if (isValid)
+        {
+            activity.Link = finalUrl ?? activity.Link;
+            return;
+        }
+
+        var query = string.IsNullOrWhiteSpace(city) ? activity.Name : $"{activity.Name}, {city}";
+
+        // Repair step 1 — re-search: ask the model for a fresh, specific link and re-validate it.
+        var candidate = await FindDirectLinkAsync(query);
+        if (!string.IsNullOrWhiteSpace(candidate))
+        {
+            var (ok, resolved) = await _linkValidationService.ValidateAsync(candidate!);
+            if (ok)
+            {
+                _logger.LogInformation("Repaired activity link for '{Name}' via re-search", activity.Name);
+                activity.Link = resolved ?? candidate;
+                return;
+            }
+        }
+
+        // Repair step 2 — deterministic map link to the exact place.
+        _logger.LogInformation("Repaired activity link for '{Name}' with map fallback", activity.Name);
+        activity.Link = LinkValidationService.BuildMapsFallback(query);
     }
 
     private async Task FillCoordsAsync(TripRequest trip)
