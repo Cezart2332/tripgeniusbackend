@@ -55,7 +55,7 @@ public class TripChatHub : Hub
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"trip-{tripId}");
     }
 
-    public async Task SendMessage(int tripId, string content, int[]? mentionedUserIds = null)
+    public async Task<MessageResponse> SendMessage(int tripId, string content, int[]? mentionedUserIds = null)
     {
         using var scope = _scopeFactory.CreateScope();
         var userRepository = scope.ServiceProvider.GetRequiredService<IUserRepository>();
@@ -115,6 +115,10 @@ public class TripChatHub : Hub
                     await repo.SaveChanges();
                 return deleted;
             });
+
+        // Returnat clientului care a trimis, ca să reconcilieze bula optimistă
+        // (folosit la trimiterea offline: timestamp-ul real e cel de acum, la sincronizare).
+        return messageResponse;
     }
 
     private static readonly Regex AiMentionRegex = new(@"(^|\s)@ai\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
