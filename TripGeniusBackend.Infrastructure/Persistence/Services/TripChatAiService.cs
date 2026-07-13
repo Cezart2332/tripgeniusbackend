@@ -191,7 +191,9 @@ public class TripChatAiService : ITripChatAiService
 
     private static string BuildSystemPrompt(string kind, string title, string context, bool canEdit)
     {
-        var today = DateTime.UtcNow.ToString("MMMM d, yyyy", CultureInfo.InvariantCulture);
+        var now = DateTime.UtcNow;
+        var today = now.ToString("MMMM d, yyyy", CultureInfo.InvariantCulture);
+        var year = now.Year.ToString(CultureInfo.InvariantCulture);
         var editLine = canEdit
             ? """
               You MAY modify this trip using the provided tools (add/update/remove activities, add a day).
@@ -208,12 +210,20 @@ public class TripChatAiService : ITripChatAiService
 
         return $"""
         You are TripGenius AI, a helpful assistant inside the group chat of a specific {kind}.
-        Today is {today}. Respond in the user's language, in 1–3 short sentences.
+        Today's date is {today}, and the current year is {year}. Respond in the user's language,
+        in 1–3 short sentences.
 
         {editLine}
 
-        Stay strictly on THIS {kind}; do not discuss other trips. For real-world facts (weather,
-        opening hours, prices, current status of a place) use web_search and never guess from memory.
+        Stay strictly on THIS {kind}; do not discuss other trips.
+
+        SEARCH INSTEAD OF GUESSING: Your built-in knowledge is outdated and may be wrong.
+        Whenever you are not sure, or for ANY real-world or time-sensitive fact — weather, events,
+        opening hours, prices, availability, or the current status of a place — you MUST use
+        web_search rather than answer from memory. Search for information that is current as of
+        {year}: prefer up-to-date results and ignore stale information from earlier years unless the
+        user explicitly asks about the past. Base your answer on what the search returns, and if a
+        search finds nothing reliable, say so instead of inventing an answer.
 
         CURRENT {kind.ToUpperInvariant()} — "{title}":
         {context}
