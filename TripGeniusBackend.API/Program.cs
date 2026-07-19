@@ -30,8 +30,6 @@ using Resend;
 using TripGeniusBackend.API.Middleware;
 using TripGeniusBackend.Application.Settings;
 using TripGeniusBackend.Infrastructure.Persistence.Hubs;
-using Microsoft.AspNetCore.RateLimiting;
-using System.Threading.RateLimiting;
 using Npgsql;
 using Pgvector.Npgsql;
 using QuestPDF.Infrastructure;
@@ -47,43 +45,6 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Configuration
     .AddJsonFile("appsettings.json")
     .AddEnvironmentVariables();
-
-builder.Services.AddRateLimiter(options =>
-{
-    static string PartitionKey(HttpContext ctx) =>
-        ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-
-    // Politica globală — 30 requests / minut per IP
-    options.AddPolicy("global", httpContext =>
-        RateLimitPartition.GetFixedWindowLimiter(PartitionKey(httpContext), _ =>
-            new FixedWindowRateLimiterOptions
-            {
-                PermitLimit = 30,
-                Window = TimeSpan.FromMinutes(1),
-                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                QueueLimit = 0,
-            }));
-
-    // Politica pentru auth — mai strictă (5 requests / minut per IP)
-    options.AddPolicy("auth", httpContext =>
-        RateLimitPartition.GetFixedWindowLimiter("auth-" + PartitionKey(httpContext), _ =>
-            new FixedWindowRateLimiterOptions
-            {
-                PermitLimit = 5,
-                Window = TimeSpan.FromMinutes(1),
-                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                QueueLimit = 0,
-            }));
-
-    // Ce returnezi când e blocat
-    options.OnRejected = async (context, token) =>
-    {
-        context.HttpContext.Response.StatusCode = 429;
-        await context.HttpContext.Response.WriteAsync(
-            "Too many requests. Please try again later.", token);
-    };
-});
-
 
 builder.Services.AddSignalR();
 builder.Services.AddControllers()
@@ -364,7 +325,6 @@ app.Use(async (ctx, next) =>
 });
 app.UseMiddleware<ExceptionMiddleware>(); 
 app.UseMiddleware<LoggingMiddleware>();
-app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -389,7 +349,6 @@ app.MapHealthChecks("/health", new HealthCheckOptions
     Predicate = check => check.Tags.Contains("ready")
 });
 app.MapControllers()
-    .RequireRateLimiting("global")
     .RequireCors("frontend");
 app.MapHub<TripChatHub>("/hubs/trip-chat").RequireCors("frontend");
 app.MapHub<OffroadTripChatHub>("/hubs/offroad-trip-chat").RequireCors("frontend");

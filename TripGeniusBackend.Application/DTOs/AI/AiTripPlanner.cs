@@ -1,4 +1,4 @@
-﻿namespace TripGeniusBackend.Application.DTOs.AiChatResponse;
+namespace TripGeniusBackend.Application.DTOs.AiChatResponse;
 
 public class AiTripPlanner
 {
@@ -8,5 +8,6 @@ public class AiTripPlanner
     public int Budget { get; set; }
     public string StartingPoint { get; set; }
     public int MaxParticipants { get; set; }
-    
+    public DateTime? StartDate { get; set; }
+    public DateTime? EndDate { get; set; }
 }
