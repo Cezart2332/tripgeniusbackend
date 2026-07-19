@@ -9,4 +9,6 @@ public class AiOffroadTripPlanner
     public string Region { get; set; } = string.Empty;
     public int MaxParticipants { get; set; }
     public string DifficultyLevel { get; set; } = "Moderate";
+    public DateTime? StartDate { get; set; }
+    public DateTime? EndDate { get; set; }
 }

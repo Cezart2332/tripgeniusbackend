@@ -125,6 +125,7 @@ public class AiService : IAiService
   USER PREFERENCES:
   - Trip Request: {p.Description}
   - Duration: {p.DurationDays} days
+  - {PlannedDatesLine(p.StartDate, p.EndDate, p.DurationDays)}
   - Budget: {p.Budget} EUR
   - Interests: {string.Join(", ", p.Interests)}
   - Starting city: {p.StartingPoint}
@@ -166,6 +167,31 @@ public class AiService : IAiService
   """;
     private static string CurrentDateLine =>
         $"Today's date is {DateTime.UtcNow.ToString("MMMM d, yyyy", CultureInfo.InvariantCulture)} (year {DateTime.UtcNow.Year}).";
+
+    /// <summary>Prompt line describing when the trip must take place.</summary>
+    private static string PlannedDatesLine(DateTime? start, DateTime? end, int durationDays)
+    {
+        var (s, e) = ResolveTripDates(start, end, durationDays);
+        return $"Trip dates (MANDATORY — use these exact values for \"startingDate\" and \"endingDate\"): "
+             + $"{s:yyyy-MM-dd} to {e:yyyy-MM-dd}. Never generate dates in the past.";
+    }
+
+    /// <summary>
+    /// Resolves the trip window from the user's request: explicit dates win, otherwise
+    /// the trip starts a week from today and lasts <paramref name="durationDays"/> days.
+    /// Always returns a future start date so Trip.Create's validation cannot fail.
+    /// </summary>
+    private static (DateTime Start, DateTime End) ResolveTripDates(DateTime? start, DateTime? end, int durationDays)
+    {
+        var minStart = DateTime.UtcNow.Date.AddDays(1);
+        var s = start.HasValue ? DateTime.SpecifyKind(start.Value.Date, DateTimeKind.Utc) : minStart.AddDays(6);
+        if (s < minStart) s = minStart;
+
+        var days = Math.Max(1, durationDays);
+        var e = end.HasValue ? DateTime.SpecifyKind(end.Value.Date, DateTimeKind.Utc) : s.AddDays(days - 1);
+        if (e <= s) e = s.AddDays(Math.Max(1, days - 1));
+        return (s, e.AddHours(23));
+    }
 
     private string SystemPrompt => $"""
     You are TripGenius AI, a travel and app support assistant in the TripGenius app.
@@ -696,10 +722,10 @@ public class AiService : IAiService
         var fullText = await RunGenerationUntilJsonAsync(messages, startMarker, endMarker);
 
         var jsonContent = ExtractGenerationJson(fullText, startMarker, endMarker, requireTimelines: true);
-        return await DeserializeAndSave(jsonContent);
+        return await DeserializeAndSave(jsonContent, aiTripPlanner);
     }
 
-    private async Task<int> DeserializeAndSave(string jsonContent)
+    private async Task<int> DeserializeAndSave(string jsonContent, AiTripPlanner? planner = null)
     {
         if (jsonContent.Contains("<think>"))
         {
@@ -712,6 +738,12 @@ public class AiService : IAiService
 
         var tripRequest = JsonSerializer.Deserialize<TripRequest>(jsonContent, options)
             ?? throw new Exception("Deserializare eșuată.");
+
+        // The model sometimes emits past dates (stale knowledge of "today"); the
+        // request's dates are authoritative and must pass Trip.Create validation.
+        var generatedDays = Math.Max(1, (tripRequest.EndingDate.Date - tripRequest.StartingDate.Date).Days + 1);
+        (tripRequest.StartingDate, tripRequest.EndingDate) =
+            ResolveTripDates(planner?.StartDate, planner?.EndDate, planner?.DurationDays > 0 ? planner.DurationDays : generatedDays);
 
         await ValidateActivityLinksAsync(tripRequest);
         await FillCoordsAsync(tripRequest);
@@ -889,6 +921,7 @@ public class AiService : IAiService
       USER PREFERENCES:
       - Trip Request: {p.Description}
       - Duration: {p.DurationDays} days
+      - {PlannedDatesLine(p.StartDate, p.EndDate, p.DurationDays)}
       - Budget: {p.Budget} EUR
       - Region: {p.Region}
       - Difficulty: {p.DifficultyLevel}
@@ -939,10 +972,10 @@ public class AiService : IAiService
         var fullText = await RunGenerationUntilJsonAsync(messages, startMarker, endMarker);
 
         var jsonContent = ExtractGenerationJson(fullText, startMarker, endMarker, requireTimelines: false);
-        return await DeserializeAndSaveOffroadTrip(jsonContent);
+        return await DeserializeAndSaveOffroadTrip(jsonContent, planner);
     }
 
-    private async Task<int> DeserializeAndSaveOffroadTrip(string jsonContent)
+    private async Task<int> DeserializeAndSaveOffroadTrip(string jsonContent, AiOffroadTripPlanner? planner = null)
     {
         if (jsonContent.Contains("<think>"))
         {
@@ -1000,13 +1033,18 @@ public class AiService : IAiService
             }
         }
 
+        // Same date correction as classic trips: request dates win over model output.
+        var generatedDays = Math.Max(1, (aiTrip.EndingDate.Date - aiTrip.StartingDate.Date).Days + 1);
+        var (offroadStart, offroadEnd) =
+            ResolveTripDates(planner?.StartDate, planner?.EndDate, planner?.DurationDays > 0 ? planner.DurationDays : generatedDays);
+
         var tripRequest = new OffroadTripRequest
         {
             Title = aiTrip.Title,
             Description = aiTrip.Description,
             ImageUrl = aiTrip.ImageUrl,
-            StartingDate = aiTrip.StartingDate,
-            EndingDate = aiTrip.EndingDate,
+            StartingDate = offroadStart,
+            EndingDate = offroadEnd,
             Status = "Upcoming",
             Tags = aiTrip.Tags ?? new List<string>(),
             MaxParticipants = aiTrip.MaxParticipants,
